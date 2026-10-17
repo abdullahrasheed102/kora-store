@@ -1,0 +1,27 @@
+[
+  {
+    "key": "shipping",
+    "title": "Shipping",
+    "body": "Free US shipping on orders over $75, otherwise $6.95. Standard delivery 3-6 business days. Express $14.95 (2 business days). International shipping to the UK, Canada and Australia: $19.95, 7-14 business days. Orders ship within 1-2 business days."
+  },
+  {
+    "key": "returns",
+    "title": "Returns & exchanges",
+    "body": "Returns accepted within 30 days of delivery for unworn items with tags attached. US returns are free with a prepaid label; international customers pay return shipping. Exchanges for a different size or color are free, subject to stock. Final sale (cannot be returned): Crew Socks (3-pack) and Gift Cards."
+  },
+  {
+    "key": "refunds",
+    "title": "Refunds",
+    "body": "Refunds go to the original payment method within 5-7 business days after the warehouse receives the item. Damaged or wrong items get a full refund or a free replacement."
+  },
+  {
+    "key": "cancellations",
+    "title": "Cancellations",
+    "body": "Orders can be cancelled while they are still processing (before they ship). Once shipped, use a return instead."
+  },
+  {
+    "key": "support_hours",
+    "title": "Support hours",
+    "body": "Human support: Monday-Friday, 9am-6pm Eastern Time. The AI assistant is available 24/7."
+  }
+]

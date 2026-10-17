@@ -1,0 +1,362 @@
+[
+  {
+    "order_number": "KO-1001",
+    "customer_name": "Emily Carter",
+    "email": "emily.carter@example.com",
+    "items": [
+      {
+        "product_slug": "everyday-cotton-tee",
+        "size": "M",
+        "color": "White",
+        "quantity": 2
+      },
+      {
+        "product_slug": "straight-leg-jeans",
+        "size": "28",
+        "color": "Light Wash",
+        "quantity": 1
+      }
+    ],
+    "status": "delivered",
+    "created_days_ago": 15,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": 10,
+    "carrier": "USPS",
+    "tracking_number": "9400111202555842761234",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1002",
+    "customer_name": "Daniel Brooks",
+    "email": "daniel.brooks@example.com",
+    "items": [
+      {
+        "product_slug": "quilted-puffer-jacket",
+        "size": "L",
+        "color": "Black",
+        "quantity": 1
+      }
+    ],
+    "status": "shipped",
+    "created_days_ago": 8,
+    "estimated_delivery_in_days": 2,
+    "delivered_days_ago": null,
+    "carrier": "UPS",
+    "tracking_number": "1Z999AA10123456784",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1003",
+    "customer_name": "Sophia Nguyen",
+    "email": "sophia.nguyen@example.com",
+    "items": [
+      {
+        "product_slug": "linen-button-up-shirt",
+        "size": "S",
+        "color": "Sand",
+        "quantity": 1
+      },
+      {
+        "product_slug": "canvas-tote-bag",
+        "size": "One size",
+        "color": "Natural",
+        "quantity": 1
+      }
+    ],
+    "status": "processing",
+    "created_days_ago": 1,
+    "estimated_delivery_in_days": 6,
+    "delivered_days_ago": null,
+    "carrier": null,
+    "tracking_number": null,
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1004",
+    "customer_name": "Marcus Lee",
+    "email": "marcus.lee@example.com",
+    "items": [
+      {
+        "product_slug": "classic-sneakers",
+        "size": "US 10",
+        "color": "White",
+        "quantity": 1
+      }
+    ],
+    "status": "out_for_delivery",
+    "created_days_ago": 6,
+    "estimated_delivery_in_days": 0,
+    "delivered_days_ago": null,
+    "carrier": "FedEx",
+    "tracking_number": "612999876543",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1005",
+    "customer_name": "Olivia Martin",
+    "email": "olivia.martin@example.com",
+    "items": [
+      {
+        "product_slug": "merino-crew-sweater",
+        "size": "S",
+        "color": "Oatmeal",
+        "quantity": 1
+      },
+      {
+        "product_slug": "wool-beanie",
+        "size": "One size",
+        "color": "Grey",
+        "quantity": 1
+      }
+    ],
+    "status": "delivered",
+    "created_days_ago": 27,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": 22,
+    "carrier": "USPS",
+    "tracking_number": "9400111202555842769876",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1006",
+    "customer_name": "Liam Patel",
+    "email": "liam.patel@example.com",
+    "items": [
+      {
+        "product_slug": "oversized-hoodie",
+        "size": "XL",
+        "color": "Heather Grey",
+        "quantity": 1
+      },
+      {
+        "product_slug": "everyday-joggers",
+        "size": "L",
+        "color": "Grey",
+        "quantity": 1
+      }
+    ],
+    "status": "partially_shipped",
+    "created_days_ago": 5,
+    "estimated_delivery_in_days": 1,
+    "delivered_days_ago": null,
+    "carrier": "UPS",
+    "tracking_number": "1Z999AA10198765432",
+    "status_note": "Everyday Joggers on backorder; ships when restocked (about 3 weeks).",
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1007",
+    "customer_name": "Ava Thompson",
+    "email": "ava.thompson@example.com",
+    "items": [
+      {
+        "product_slug": "chelsea-boots",
+        "size": "US 8",
+        "color": "Tan",
+        "quantity": 1
+      }
+    ],
+    "status": "delivered",
+    "created_days_ago": 53,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": 49,
+    "carrier": "FedEx",
+    "tracking_number": "612999123456",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1008",
+    "customer_name": "Noah Williams",
+    "email": "noah.williams@example.com",
+    "items": [
+      {
+        "product_slug": "wool-blend-overcoat",
+        "size": "M",
+        "color": "Camel",
+        "quantity": 1
+      }
+    ],
+    "status": "processing",
+    "created_days_ago": 0,
+    "estimated_delivery_in_days": 7,
+    "delivered_days_ago": null,
+    "carrier": null,
+    "tracking_number": null,
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1009",
+    "customer_name": "Mia Garcia",
+    "email": "mia.garcia@example.com",
+    "items": [
+      {
+        "product_slug": "pleated-midi-skirt",
+        "size": "M",
+        "color": "Sage",
+        "quantity": 1
+      },
+      {
+        "product_slug": "ribbed-tank-top",
+        "size": "S",
+        "color": "Black",
+        "quantity": 1
+      }
+    ],
+    "status": "delayed",
+    "created_days_ago": 12,
+    "estimated_delivery_in_days": 3,
+    "delivered_days_ago": null,
+    "carrier": "USPS",
+    "tracking_number": "9400111202555842765555",
+    "status_note": "Carrier weather delay.",
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1010",
+    "customer_name": "Ethan Johnson",
+    "email": "ethan.johnson@example.com",
+    "items": [
+      {
+        "product_slug": "lightweight-rain-shell",
+        "size": "M",
+        "color": "Yellow",
+        "quantity": 1
+      }
+    ],
+    "status": "returned",
+    "created_days_ago": 16,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": 11,
+    "carrier": "USPS",
+    "tracking_number": "9400111202555842764444",
+    "status_note": "Returned; refund issued to original payment method.",
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1011",
+    "customer_name": "Isabella Rossi",
+    "email": "isabella.rossi@example.com",
+    "items": [
+      {
+        "product_slug": "crew-socks-3-pack",
+        "size": "M",
+        "color": "Mixed neutrals",
+        "quantity": 1
+      },
+      {
+        "product_slug": "leather-belt",
+        "size": "M",
+        "color": "Brown",
+        "quantity": 1
+      }
+    ],
+    "status": "delivered",
+    "created_days_ago": 7,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": 2,
+    "carrier": "USPS",
+    "tracking_number": "9400111202555842763333",
+    "status_note": null,
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  },
+  {
+    "order_number": "KO-1012",
+    "customer_name": "James Wilson",
+    "email": "james.wilson@example.com",
+    "items": [
+      {
+        "product_slug": "relaxed-chino-pants",
+        "size": "32",
+        "color": "Navy",
+        "quantity": 2
+      }
+    ],
+    "status": "cancelled",
+    "created_days_ago": 1,
+    "estimated_delivery_in_days": null,
+    "delivered_days_ago": null,
+    "carrier": null,
+    "tracking_number": null,
+    "status_note": "Cancelled by customer; refunded to original payment method.",
+    "shipping_address": {
+      "line1": "123 Demo Street",
+      "city": "Austin",
+      "state": "TX",
+      "postal_code": "78701",
+      "country": "US"
+    }
+  }
+]

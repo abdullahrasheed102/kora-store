@@ -1,0 +1,1801 @@
+[
+  {
+    "slug": "everyday-cotton-tee",
+    "name": "Everyday Cotton Tee",
+    "category": "Tops",
+    "price_cents": 2400,
+    "description": "Relaxed-fit crew neck tee, our best seller.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "100% organic cotton. Machine wash cold, tumble dry low.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-001-WHIT-XS",
+        "size": "XS",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-WHIT-S",
+        "size": "S",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-WHIT-M",
+        "size": "M",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-WHIT-L",
+        "size": "L",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-WHIT-XL",
+        "size": "XL",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-WHIT-XXL",
+        "size": "XXL",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-XL",
+        "size": "XL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-BLAC-XXL",
+        "size": "XXL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-XS",
+        "size": "XS",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-S",
+        "size": "S",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-M",
+        "size": "M",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-L",
+        "size": "L",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-XL",
+        "size": "XL",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-001-OLIV-XXL",
+        "size": "XXL",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "linen-button-up-shirt",
+    "name": "Linen Button-Up Shirt",
+    "category": "Tops",
+    "price_cents": 5800,
+    "description": "Breathable linen shirt with a slightly oversized fit.",
+    "fit_notes": "Slightly oversized; size down for a closer fit.",
+    "material_care": "100% linen. Machine wash cold, hang dry.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-002-SAND-S",
+        "size": "S",
+        "color": "Sand",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SAND-M",
+        "size": "M",
+        "color": "Sand",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SAND-L",
+        "size": "L",
+        "color": "Sand",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SAND-XL",
+        "size": "XL",
+        "color": "Sand",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SKYB-S",
+        "size": "S",
+        "color": "Sky Blue",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SKYB-M",
+        "size": "M",
+        "color": "Sky Blue",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SKYB-L",
+        "size": "L",
+        "color": "Sky Blue",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-002-SKYB-XL",
+        "size": "XL",
+        "color": "Sky Blue",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "merino-crew-sweater",
+    "name": "Merino Crew Sweater",
+    "category": "Tops",
+    "price_cents": 8900,
+    "description": "Lightweight merino sweater that layers well.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "100% merino wool. Hand wash cold, dry flat.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-003-CHAR-XS",
+        "size": "XS",
+        "color": "Charcoal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-CHAR-S",
+        "size": "S",
+        "color": "Charcoal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-CHAR-M",
+        "size": "M",
+        "color": "Charcoal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-CHAR-L",
+        "size": "L",
+        "color": "Charcoal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-CHAR-XL",
+        "size": "XL",
+        "color": "Charcoal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-OATM-XS",
+        "size": "XS",
+        "color": "Oatmeal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-OATM-S",
+        "size": "S",
+        "color": "Oatmeal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-OATM-M",
+        "size": "M",
+        "color": "Oatmeal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-OATM-L",
+        "size": "L",
+        "color": "Oatmeal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-OATM-XL",
+        "size": "XL",
+        "color": "Oatmeal",
+        "stock": 4,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-FORE-XS",
+        "size": "XS",
+        "color": "Forest",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-FORE-S",
+        "size": "S",
+        "color": "Forest",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-FORE-M",
+        "size": "M",
+        "color": "Forest",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-FORE-L",
+        "size": "L",
+        "color": "Forest",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-003-FORE-XL",
+        "size": "XL",
+        "color": "Forest",
+        "stock": 0,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "oversized-hoodie",
+    "name": "Oversized Hoodie",
+    "category": "Tops",
+    "price_cents": 6400,
+    "description": "Heavyweight brushed fleece hoodie with a dropped shoulder.",
+    "fit_notes": "Runs large; size down for a regular fit.",
+    "material_care": "80% cotton, 20% recycled polyester. Machine wash cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-004-HEAT-S",
+        "size": "S",
+        "color": "Heather Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-HEAT-M",
+        "size": "M",
+        "color": "Heather Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-HEAT-L",
+        "size": "L",
+        "color": "Heather Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-HEAT-XL",
+        "size": "XL",
+        "color": "Heather Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-HEAT-XXL",
+        "size": "XXL",
+        "color": "Heather Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-BLAC-XL",
+        "size": "XL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-004-BLAC-XXL",
+        "size": "XXL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "ribbed-tank-top",
+    "name": "Ribbed Tank Top",
+    "category": "Tops",
+    "price_cents": 1900,
+    "description": "Fitted ribbed tank.",
+    "fit_notes": "Runs slightly small.",
+    "material_care": "95% cotton, 5% elastane. Machine wash cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-005-WHIT-XS",
+        "size": "XS",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-WHIT-S",
+        "size": "S",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-WHIT-M",
+        "size": "M",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-WHIT-L",
+        "size": "L",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-ROSE-XS",
+        "size": "XS",
+        "color": "Rose",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-ROSE-S",
+        "size": "S",
+        "color": "Rose",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-ROSE-M",
+        "size": "M",
+        "color": "Rose",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-005-ROSE-L",
+        "size": "L",
+        "color": "Rose",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "straight-leg-jeans",
+    "name": "Straight-Leg Jeans",
+    "category": "Bottoms",
+    "price_cents": 7900,
+    "description": "Mid-rise straight-leg denim with a little stretch. 30-inch inseam.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "98% cotton, 2% elastane. Wash inside out, cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-006-LIGH-24",
+        "size": "24",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-26",
+        "size": "26",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-28",
+        "size": "28",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-30",
+        "size": "30",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-32",
+        "size": "32",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-34",
+        "size": "34",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-LIGH-36",
+        "size": "36",
+        "color": "Light Wash",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-24",
+        "size": "24",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-26",
+        "size": "26",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-28",
+        "size": "28",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-30",
+        "size": "30",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-32",
+        "size": "32",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-34",
+        "size": "34",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-006-DARK-36",
+        "size": "36",
+        "color": "Dark Indigo",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "relaxed-chino-pants",
+    "name": "Relaxed Chino Pants",
+    "category": "Bottoms",
+    "price_cents": 6200,
+    "description": "Relaxed chinos with a tapered ankle.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "100% cotton twill. Machine wash cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-007-KHAK-28",
+        "size": "28",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-KHAK-30",
+        "size": "30",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-KHAK-32",
+        "size": "32",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-KHAK-34",
+        "size": "34",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-KHAK-36",
+        "size": "36",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-KHAK-38",
+        "size": "38",
+        "color": "Khaki",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-28",
+        "size": "28",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-30",
+        "size": "30",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-32",
+        "size": "32",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-34",
+        "size": "34",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-36",
+        "size": "36",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-NAVY-38",
+        "size": "38",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-28",
+        "size": "28",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-30",
+        "size": "30",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-32",
+        "size": "32",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-34",
+        "size": "34",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-36",
+        "size": "36",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-007-BLAC-38",
+        "size": "38",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "pleated-midi-skirt",
+    "name": "Pleated Midi Skirt",
+    "category": "Bottoms",
+    "price_cents": 5400,
+    "description": "Flowy pleated skirt with an elastic waist.",
+    "fit_notes": "Elastic waist; fits true to size.",
+    "material_care": "100% recycled polyester. Hand wash or gentle cycle.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-008-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-SAGE-XS",
+        "size": "XS",
+        "color": "Sage",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-SAGE-S",
+        "size": "S",
+        "color": "Sage",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-SAGE-M",
+        "size": "M",
+        "color": "Sage",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-008-SAGE-L",
+        "size": "L",
+        "color": "Sage",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "everyday-joggers",
+    "name": "Everyday Joggers",
+    "category": "Bottoms",
+    "price_cents": 4800,
+    "description": "Soft fleece joggers with zip pockets.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "80% cotton, 20% polyester. Machine wash cold.",
+    "is_final_sale": false,
+    "restock_note": "Restock expected in about 3 weeks",
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-009-GREY-XS",
+        "size": "XS",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-GREY-S",
+        "size": "S",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-GREY-M",
+        "size": "M",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-GREY-L",
+        "size": "L",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-GREY-XL",
+        "size": "XL",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-GREY-XXL",
+        "size": "XXL",
+        "color": "Grey",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-XL",
+        "size": "XL",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-BLAC-XXL",
+        "size": "XXL",
+        "color": "Black",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-XS",
+        "size": "XS",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-S",
+        "size": "S",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-M",
+        "size": "M",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-L",
+        "size": "L",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-XL",
+        "size": "XL",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-009-NAVY-XXL",
+        "size": "XXL",
+        "color": "Navy",
+        "stock": 0,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "utility-cargo-shorts",
+    "name": "Utility Cargo Shorts",
+    "category": "Bottoms",
+    "price_cents": 4200,
+    "description": "Cargo shorts with a 7-inch inseam.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "100% cotton ripstop. Machine wash cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-010-OLIV-28",
+        "size": "28",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-OLIV-30",
+        "size": "30",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-OLIV-32",
+        "size": "32",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-OLIV-34",
+        "size": "34",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-OLIV-36",
+        "size": "36",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-OLIV-38",
+        "size": "38",
+        "color": "Olive",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-28",
+        "size": "28",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-30",
+        "size": "30",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-32",
+        "size": "32",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-34",
+        "size": "34",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-36",
+        "size": "36",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-010-STON-38",
+        "size": "38",
+        "color": "Stone",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "quilted-puffer-jacket",
+    "name": "Quilted Puffer Jacket",
+    "category": "Outerwear",
+    "price_cents": 14900,
+    "description": "Water-resistant puffer with recycled insulation.",
+    "fit_notes": "Fits true to size, with room for a sweater underneath.",
+    "material_care": "Shell: recycled nylon. Spot clean or gentle cycle.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-011-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-BLAC-XL",
+        "size": "XL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-NAVY-XS",
+        "size": "XS",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-NAVY-S",
+        "size": "S",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-NAVY-M",
+        "size": "M",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-NAVY-L",
+        "size": "L",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-NAVY-XL",
+        "size": "XL",
+        "color": "Navy",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-CLAY-XS",
+        "size": "XS",
+        "color": "Clay",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-CLAY-S",
+        "size": "S",
+        "color": "Clay",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-CLAY-M",
+        "size": "M",
+        "color": "Clay",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-CLAY-L",
+        "size": "L",
+        "color": "Clay",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-011-CLAY-XL",
+        "size": "XL",
+        "color": "Clay",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "wool-blend-overcoat",
+    "name": "Wool Blend Overcoat",
+    "category": "Outerwear",
+    "price_cents": 18900,
+    "description": "Tailored knee-length overcoat.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "70% wool, 30% polyester. Dry clean only.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-012-CAME-S",
+        "size": "S",
+        "color": "Camel",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CAME-M",
+        "size": "M",
+        "color": "Camel",
+        "stock": 2,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CAME-L",
+        "size": "L",
+        "color": "Camel",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CAME-XL",
+        "size": "XL",
+        "color": "Camel",
+        "stock": 0,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CHAR-S",
+        "size": "S",
+        "color": "Charcoal",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CHAR-M",
+        "size": "M",
+        "color": "Charcoal",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CHAR-L",
+        "size": "L",
+        "color": "Charcoal",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-012-CHAR-XL",
+        "size": "XL",
+        "color": "Charcoal",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "lightweight-rain-shell",
+    "name": "Lightweight Rain Shell",
+    "category": "Outerwear",
+    "price_cents": 9800,
+    "description": "Packable waterproof shell with a hood.",
+    "fit_notes": "Fits true to size.",
+    "material_care": "100% recycled nylon, waterproof coating. Machine wash cold, hang dry.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-013-YELL-XS",
+        "size": "XS",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-YELL-S",
+        "size": "S",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-YELL-M",
+        "size": "M",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-YELL-L",
+        "size": "L",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-YELL-XL",
+        "size": "XL",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-YELL-XXL",
+        "size": "XXL",
+        "color": "Yellow",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-XS",
+        "size": "XS",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-XL",
+        "size": "XL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-013-BLAC-XXL",
+        "size": "XXL",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "canvas-tote-bag",
+    "name": "Canvas Tote Bag",
+    "category": "Accessories",
+    "price_cents": 2900,
+    "description": "Heavy canvas tote with an inside pocket. Fits a 15-inch laptop.",
+    "fit_notes": "One size.",
+    "material_care": "100% cotton canvas. Spot clean.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-014-NATU-ONESIZE",
+        "size": "One size",
+        "color": "Natural",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-014-BLAC-ONESIZE",
+        "size": "One size",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "leather-belt",
+    "name": "Leather Belt",
+    "category": "Accessories",
+    "price_cents": 4500,
+    "description": "Full-grain leather belt with a brass buckle.",
+    "fit_notes": "Order your jeans waist size + 2 inches (S 28-30, M 32-34, L 36-38).",
+    "material_care": "Full-grain leather. Wipe clean.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-015-BROW-S",
+        "size": "S",
+        "color": "Brown",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-015-BROW-M",
+        "size": "M",
+        "color": "Brown",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-015-BROW-L",
+        "size": "L",
+        "color": "Brown",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-015-BLAC-S",
+        "size": "S",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-015-BLAC-M",
+        "size": "M",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-015-BLAC-L",
+        "size": "L",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "wool-beanie",
+    "name": "Wool Beanie",
+    "category": "Accessories",
+    "price_cents": 2200,
+    "description": "Ribbed beanie with a fold-over cuff.",
+    "fit_notes": "One size.",
+    "material_care": "100% wool. Hand wash cold.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-016-GREY-ONESIZE",
+        "size": "One size",
+        "color": "Grey",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-016-BLAC-ONESIZE",
+        "size": "One size",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-016-MUST-ONESIZE",
+        "size": "One size",
+        "color": "Mustard",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "classic-sneakers",
+    "name": "Classic Sneakers",
+    "category": "Footwear",
+    "price_cents": 9500,
+    "description": "Leather low-top sneakers.",
+    "fit_notes": "True to size; size down half a size if between sizes.",
+    "material_care": "Leather upper, rubber sole. Wipe clean.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-017-WHIT-US5",
+        "size": "US 5",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US6",
+        "size": "US 6",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US7",
+        "size": "US 7",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US8",
+        "size": "US 8",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US9",
+        "size": "US 9",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US10",
+        "size": "US 10",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US11",
+        "size": "US 11",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US12",
+        "size": "US 12",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-WHIT-US13",
+        "size": "US 13",
+        "color": "White",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US5",
+        "size": "US 5",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US6",
+        "size": "US 6",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US7",
+        "size": "US 7",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US8",
+        "size": "US 8",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US9",
+        "size": "US 9",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US10",
+        "size": "US 10",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US11",
+        "size": "US 11",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US12",
+        "size": "US 12",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-017-BLAC-US13",
+        "size": "US 13",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "chelsea-boots",
+    "name": "Chelsea Boots",
+    "category": "Footwear",
+    "price_cents": 13900,
+    "description": "Suede Chelsea boots with elastic sides.",
+    "fit_notes": "Run half a size large.",
+    "material_care": "Suede upper. Use suede protector spray.",
+    "is_final_sale": false,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-018-BLAC-US6",
+        "size": "US 6",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US7",
+        "size": "US 7",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US8",
+        "size": "US 8",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US9",
+        "size": "US 9",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US10",
+        "size": "US 10",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US11",
+        "size": "US 11",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-BLAC-US12",
+        "size": "US 12",
+        "color": "Black",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US6",
+        "size": "US 6",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US7",
+        "size": "US 7",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US8",
+        "size": "US 8",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US9",
+        "size": "US 9",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US10",
+        "size": "US 10",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US11",
+        "size": "US 11",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-018-TAN-US12",
+        "size": "US 12",
+        "color": "Tan",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "crew-socks-3-pack",
+    "name": "Crew Socks (3-pack)",
+    "category": "Accessories",
+    "price_cents": 1800,
+    "description": "Cushioned cotton crew socks.",
+    "fit_notes": "S fits US 5-7, M 8-10, L 11-13.",
+    "material_care": "80% cotton. Machine wash warm.",
+    "is_final_sale": true,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-019-MIXE-S",
+        "size": "S",
+        "color": "Mixed neutrals",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-019-MIXE-M",
+        "size": "M",
+        "color": "Mixed neutrals",
+        "stock": 25,
+        "price_cents": null
+      },
+      {
+        "sku": "KO-019-MIXE-L",
+        "size": "L",
+        "color": "Mixed neutrals",
+        "stock": 25,
+        "price_cents": null
+      }
+    ]
+  },
+  {
+    "slug": "gift-card",
+    "name": "Gift Card",
+    "category": "Gift Cards",
+    "price_cents": 2500,
+    "description": "Digital gift card delivered by email. Never expires.",
+    "fit_notes": "N/A",
+    "material_care": null,
+    "is_final_sale": true,
+    "restock_note": null,
+    "image_url": null,
+    "variants": [
+      {
+        "sku": "KO-020-DIGI-25",
+        "size": "$25",
+        "color": "Digital",
+        "stock": 9999,
+        "price_cents": 2500
+      },
+      {
+        "sku": "KO-020-DIGI-50",
+        "size": "$50",
+        "color": "Digital",
+        "stock": 9999,
+        "price_cents": 5000
+      },
+      {
+        "sku": "KO-020-DIGI-100",
+        "size": "$100",
+        "color": "Digital",
+        "stock": 9999,
+        "price_cents": 10000
+      }
+    ]
+  }
+]
