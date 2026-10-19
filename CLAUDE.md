@@ -6,21 +6,45 @@ AI customer support agent that will be added later. The full spec and build phas
 Work one phase at a time and don't start the next phase until the current one passes its checks.
 
 ## How we work (read this first)
-This is Abdullah's portfolio project for landing an AI / backend engineering job, so the goal is for him to
-**learn and be able to explain every line of the backend and the AI agent**. The two halves are handled differently:
+This is Abdullah's portfolio project for entry-level AI engineering jobs. **Claude writes all the code**
+(frontend, backend and the AI agent). Abdullah's goal is to **understand and explain every part of it in
+interviews**, so teaching is part of every task, not an extra.
 
-**`frontend/` — build mode.** Claude builds the frontend fully and independently, to a professional standard.
-Abdullah reviews it but doesn't need to write it.
+- **Before coding a task**, explain in plain language: what you're building, why it's needed, how it fits the
+  architecture, and the alternatives for any real design choice (and why we picked this one).
+- **While coding**, write clean, readable code. Add short comments that explain the "why" on anything non-obvious.
+  Don't comment the obvious.
+- **After each phase** (required before the phase counts as done):
+  1. Run the tests and checks (`pytest`, `npm run lint && npm run build`) and show the results.
+  2. Write the phase guide in `docs/guide/` (see Documentation below).
+  3. Update `docs/ARCHITECTURE.md`.
+  4. Add 5–8 interview questions with model answers to `docs/INTERVIEW_PREP.md`.
+  5. Add new terms to `docs/GLOSSARY.md`.
+  6. Tell Abdullah how to try it himself, and offer to quiz him.
+- **When Abdullah asks a question**, answer at beginner level first, then go one level deeper. Use examples
+  from our actual files (with `path:line` references).
+- Abdullah develops on **Ubuntu Linux**. Give shell commands for bash on Ubuntu.
 
-**`backend/` and `agent/` — mentor mode.** Abdullah writes the important code himself; Claude teaches, guides and reviews.
-- Before each task, explain the concept in a few sentences (what it is, why we need it, how it fits the architecture), then propose a short plan.
-- Claude may write boilerplate: config, app factory wiring, migrations generated from models, test fixtures, deployment files, and seed loaders.
-- Abdullah writes the core logic: models, routes, validation, pricing and stock rules, auth, checkout and webhook handling, return eligibility, and every part of the agent (state, nodes, tools, prompts, routing). Mark these spots with `TODO(human)` and describe what to write, the inputs and outputs, and the trade-offs to weigh. Don't write the solution unless he asks for it.
-- Write or outline the tests first where it helps, so he can check his own code by running `pytest`.
-- When he says he's done, review his code like a senior engineer: correctness, security, edge cases, naming. Explain the why behind each suggestion and let him make the fix.
-- If he's stuck, give hints in increasing order (a pointer, then pseudocode, then a partial snippet) before a full answer.
-- At the end of each phase, give 3–5 interview-style questions about what he built, and add a short entry to `docs/LEARNING_LOG.md` (concepts covered, decisions made, and why).
-- Recommended: run `/output-style learning` when working on backend or agent tasks, and switch back with `/output-style default` for frontend work.
+## Documentation
+Write all docs in simple English with short sentences. Define each piece of jargon the first time it appears.
+Abdullah's first language is Urdu, so prefer plain words over idioms.
+
+- `docs/ARCHITECTURE.md` — the whole system on one page: a Mermaid diagram of all the parts (browser, Next.js,
+  Flask, Postgres, Stripe, the agent) and how a request flows through them. Mark what is built and what is planned.
+  Update it after every phase.
+- `docs/guide/NN-topic.md` — one guide per phase (`00-project-setup.md`, `01-database.md`, …). Each guide has
+  these sections:
+  - **What we built**
+  - **Key concepts**
+  - **How it works here** — a file walkthrough with short code excerpts
+  - **Request flow** — a Mermaid sequence diagram
+  - **Design decisions and alternatives**
+  - **What could go wrong**
+  - **Try it yourself**
+  - **Explain it in 60 seconds** — a short script Abdullah can say in an interview
+- `docs/INTERVIEW_PREP.md` — interview questions with model answers, grouped by phase.
+- `docs/GLOSSARY.md` — every technical term we use, in alphabetical order, each with a one- or two-sentence
+  plain-English definition and where it appears in the project.
 
 ## Stack
 - `frontend/` — Next.js (latest, App Router, TypeScript) + Tailwind CSS. Deployed on **Vercel**.

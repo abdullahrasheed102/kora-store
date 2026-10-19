@@ -60,73 +60,95 @@ Order statuses: `pending_payment`, `processing`, `shipped`, `out_for_delivery`, 
 
 ## 4. Build phases
 
-Each phase has two tracks. Run them as **separate Claude Code sessions** so each one stays focused:
-- 🎓 **Backend track (you write it).** Start with `/output-style learning`. Claude explains, scaffolds, writes tests and reviews, and you write the core logic at the `TODO(human)` spots.
-- 🎨 **Frontend track (Claude builds it).** Start with `/output-style default`. Claude builds it fully against the API you've finished.
+Claude builds every phase: frontend, backend and the agent. Abdullah's job is to understand it well enough to explain
+it in an interview. Each phase ends with tests passing, a guide in `docs/guide/`, and updates to `docs/ARCHITECTURE.md`,
+`docs/INTERVIEW_PREP.md` and `docs/GLOSSARY.md` (see "How we work" in CLAUDE.md).
 
-Do the backend track of a phase first, so the frontend is always built on a real, tested API.
+### How to run each phase
+1. **Start a fresh Claude Code session** so the context is clean and focused on one phase.
+2. **Run `/output-style explanatory`** so Claude explains its choices while it works.
+3. **Enter plan mode** (Shift+Tab) and paste the phase prompt. Read the plan, ask questions, then approve it.
+4. **Try it yourself** using the "Try it yourself" steps Claude gives you at the end.
+5. **Commit** once the checks pass: `git add -A && git commit -m "Phase N: <topic>"`.
+6. **Read the guide** for the phase in `docs/guide/`.
+7. **Get quizzed**: ask Claude to quiz you on the phase using `docs/INTERVIEW_PREP.md`.
 
 ### Phase 0 — Repo setup
-🎓 > Read CLAUDE.md. Teach me how a production Flask project is structured, then set up `backend/` with me: the app factory, config from environment variables, blueprints, `/api/health`, requirements, `.env.example`, docker-compose Postgres and pytest. You do the wiring; explain each file as you create it. Leave the health route for me to write.
+> Read CLAUDE.md and docs/PLAN.md. Set up `backend/`: the app factory, config from environment variables, blueprints, `/api/health` (with a database check), requirements, `.env.example`, docker-compose Postgres and pytest. Set up `frontend/`: Next.js App Router + TypeScript + Tailwind with the design tokens and fonts, the `/api` rewrite to `BACKEND_URL`, the typed API client in `lib/api.ts`, and a placeholder home page that shows `/api/health`.
 
-🎨 > Read CLAUDE.md and docs/PLAN.md. Build `frontend/`: Next.js App Router + TypeScript + Tailwind with the design tokens and fonts, the `/api` rewrite to `BACKEND_URL`, the typed API client in `lib/api.ts`, and a placeholder home page that shows `/api/health`.
+✅ Done when: both apps run locally, `pytest` passes, and `npm run lint && npm run build` pass.
 
-✅ Done when: both apps run locally and `pytest` passes. **You learn:** app factory, blueprints, config and env vars, why the `/api` proxy exists.
+**Concepts:** app factory, blueprints, config and environment variables, virtual environments, Docker Compose, the `/api` proxy and why it exists, health checks.
 
 ### Phase 1 — Database, models and seed
-🎓 > Teach me SQLAlchemy 2.x models, relationships, constraints and Alembic migrations, using our schema in docs/PLAN.md section 1. I'll write the models; give me one table at a time with `TODO(human)`. Then you write the seed loader and I'll review it. Write model tests first so I can check my work.
+> Build the SQLAlchemy 2.x models for the schema in docs/PLAN.md section 1, the first Alembic migration, and the `flask seed --reset` command that loads `backend/seed/`. Write model tests first.
 
-✅ Done when: the seed loads 20 products, 217 variants, 12 orders and 5 policies. **You learn:** relational design, foreign keys, indexes, migrations, cents vs floats.
+✅ Done when: the seed loads 20 products, 217 variants, 12 orders and 5 policies.
+
+**Concepts:** relational design, primary and foreign keys, constraints, indexes, ORM vs raw SQL, migrations, money as integer cents (not floats), relative seed dates.
 
 ### Phase 2 — Catalog API + storefront
-🎓 > Guide me through building the product, category and policy endpoints with filters, search, sort and pagination. I write the routes and queries; you write the tests and review my query efficiency (N+1 queries, indexes).
+> Build the product, category and policy endpoints with filters, search, sort and pagination, plus tests. Then build the storefront against them: home, shop with filters, category pages, product detail with variant selection and live stock, policies pages, header, footer and 404. Premium look, fully responsive.
 
-🎨 > Build the storefront against the finished API: home, shop with filters, category pages, product detail with variant selection and live stock, policies pages, header, footer and 404. Premium look, fully responsive.
+✅ Done when: the shop pages show seeded products with working filters, and tests cover each endpoint.
 
-**You learn:** REST design, query optimization, pagination, input validation.
+**Concepts:** REST design, query parameters, pagination, N+1 queries, input validation, server vs client components, SEO metadata.
 
 ### Phase 3 — Cart and accounts
-🎓 > Teach me server-side cart pricing and authentication. I'll write `/cart/quote` (pricing, shipping rules, stock checks) and the auth routes (signup, login, logout, me) with httpOnly cookie JWTs, CSRF and login rate limiting. Explain the security reasoning behind each choice.
+> Build `/cart/quote` (server-side pricing, shipping rules, stock checks) and the auth routes (signup, login, logout, me) with httpOnly cookie JWTs, CSRF protection and login rate limiting. Then build the cart context, cart drawer, cart page, login, signup and account pages (profile, addresses, order history).
 
-🎨 > Build the cart context, cart drawer, cart page, login, signup and account pages (profile, addresses, order history).
+✅ Done when: a user can sign up, log in, build a cart with correct server-calculated totals, and log out.
 
-**You learn:** password hashing, JWT vs sessions, cookies, CSRF, rate limiting, never trusting the client.
+**Concepts:** never trusting the client, password hashing, JWT vs server sessions, cookies (httpOnly, Secure, SameSite), CSRF, rate limiting, React context.
 
 ### Phase 4 — Stripe checkout
-🎓 > Teach me how Stripe Checkout and webhooks work. I'll write the checkout session endpoint and the webhook handler (signature verification, idempotency, stock decrement in a transaction with row locks). You write tests that mock Stripe and explain race conditions.
+> Build the checkout session endpoint and the Stripe webhook handler (signature verification, idempotency, stock decrement in a transaction with row locks), with tests that mock Stripe. Then build the checkout and order success pages.
 
-🎨 > Build the checkout and order success pages.
+✅ Done when: card `4242 4242 4242 4242` creates a KO order and stock goes down.
 
-✅ Done when: card `4242 4242 4242 4242` creates a KO order and stock goes down. **You learn:** webhooks, idempotency, transactions, race conditions.
+**Concepts:** hosted checkout, webhooks, signature verification, idempotency, database transactions, row locks, race conditions.
 
 ### Phase 5 — Order tracking and returns
-🎓 > Guide me to write order tracking (rate limited, no information leaks) and the return eligibility rules from the policy. You write one test per rule first; I make them pass.
+> Build order tracking (rate limited, no information leaks) and the return eligibility rules from the policy, with one test per rule. Then build the `/track` page with a status timeline, the `/returns` page, and "start a return" from the account.
 
-🎨 > Build the `/track` page with a status timeline, the `/returns` page, and "start a return" from the account.
+✅ Done when: KO-1005 is eligible, KO-1007 is refused (over 30 days), and the socks in KO-1011 are refused (final sale).
 
-✅ Done when: KO-1005 is eligible, KO-1007 is refused (over 30 days), and the socks in KO-1011 are refused (final sale). **You learn:** business rules as code, test-driven development, avoiding user enumeration.
+**Concepts:** business rules as code, test-driven development, user enumeration and how to avoid it, audit timelines (`order_events`).
 
 ### Phase 6 — Admin dashboard
-🎓 > Teach me role-based access control. I'll write the admin endpoints (product and stock management, order status updates that write events, returns, tickets, stats queries) and the admin permission checks.
+> Build role-based access control and the admin endpoints (product and stock management, order status updates that write events, returns, tickets, stats queries). Then build the full admin UI: dashboard with stats, products, orders, returns and tickets.
 
-🎨 > Build the full admin UI: dashboard with stats, products, orders, returns and tickets.
+✅ Done when: an admin can update an order's status (and it appears in the tracking timeline), and a customer gets 403 on every admin route.
 
-**You learn:** authorization vs authentication, aggregate SQL queries, audit trails.
+**Concepts:** authentication vs authorization, role-based access control, aggregate SQL queries, audit trails.
 
 ### Phase 7 — Deploy
-🎓 > Walk me through deploying Flask to Render with Neon Postgres: gunicorn, migrations on deploy, environment variables, health checks, logs, and the Stripe webhook in production. I'll do each step myself while you explain it.
+> Deploy Flask to Render with Neon Postgres (gunicorn, migrations on deploy, environment variables, health checks, logs, the production Stripe webhook) and the frontend to Vercel with `BACKEND_URL` and production settings. Explain each step as we do it.
 
-🎨 > Deploy the frontend to Vercel with `BACKEND_URL` and production settings.
+✅ Done when: the live site works end to end with a test payment.
 
-✅ Done when: the live site works end to end with a test payment. **You learn:** production config, secrets management, debugging from logs.
+**Concepts:** WSGI servers, production config, secrets management, connection pooling, cold starts, debugging from logs.
 
 ### Phase 8 — AI support agent (the main event)
-All 🎓. This is the part interviewers will ask about most. Planned in detail once the store is live:
+This is the part interviewers will ask about most, so it gets the most detailed guide. Planned in detail once the store is live:
 1. The `/api/agent/*` endpoints with API-key auth.
 2. A LangGraph supervisor with Order, Product and Returns agents, using Groq for routing and Gemini for the specialists.
 3. Tools that call the backend, guardrails (verify the order email before sharing data, escalate risky cases), and conversation memory.
 4. Evals: 30+ test conversations with expected outcomes, run in CI, plus tracing.
 5. A chat widget on the store, then WhatsApp.
+
+✅ Done when: the chat widget answers order, product and return questions using real data, and the eval suite passes in CI.
+
+**Concepts (the guide covers each in depth):**
+- **Agents vs chatbots** — a chatbot only replies; an agent decides which actions to take and calls tools.
+- **Tool calling** — how the model asks for a function call, how we run it and return the result.
+- **The supervisor pattern** — one router agent hands each request to a specialist agent.
+- **State and memory** — what the graph state holds, and short-term vs long-term conversation memory.
+- **Prompt design** — system prompts, tool descriptions, few-shot examples, structured output.
+- **Guardrails** — identity checks before sharing order data, refusing off-topic requests, escalating to a human.
+- **Evals** — test conversations with expected outcomes, how to measure success, running them in CI.
+- **Cost and latency** — why a small fast model (Groq) routes and a stronger model (Gemini) answers; token budgets.
+- **Why LangGraph** — compared with a plain loop, LangChain agents, and other agent frameworks.
 
 ## 5. Environment variables
 - Agent (phase 8): `GROQ_API_KEY`, `GEMINI_API_KEY`, `AGENT_API_KEY`, `BACKEND_URL`

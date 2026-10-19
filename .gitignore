@@ -1,0 +1,14 @@
+# Secrets: real values never go in git. .env.example is the committed template.
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node / Next.js
+node_modules/
+.next/
