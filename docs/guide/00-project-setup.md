@@ -1,7 +1,7 @@
 # Phase 0 — Project setup
 
-> **Status:** the backend half is done. The frontend half (Next.js, the `/api` proxy, `lib/api.ts`) comes next,
-> and this guide will be extended when it is built.
+> **Note:** this guide covers the backend setup. The frontend setup (Next.js, design tokens, the `/api` rewrite and
+> `lib/api.ts`) was built together with the storefront and is explained in [02-catalog.md](02-catalog.md).
 
 ## What we built
 

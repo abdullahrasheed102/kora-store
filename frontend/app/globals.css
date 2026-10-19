@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* Design tokens from CLAUDE.md. `@theme` turns each one into Tailwind classes:
+   --color-ink -> bg-ink / text-ink / border-ink, --font-serif -> font-serif, etc. */
+@theme inline {
+  --color-ink: #1f1b16;
+  --color-paper: #f7f3ec; /* page background */
+  --color-card: #fffdf9;
+  --color-accent: #b4532a;
+  --color-accent-dark: #93421f; /* hover state for accent buttons */
+  --color-sage: #dfe6d6;
+  --color-muted: #6b6359; /* secondary text; 5.6:1 contrast on paper (WCAG AA) */
+  --color-line: #e6dfd3; /* hairline borders */
+
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+
+  /* One visible, consistent keyboard focus style everywhere. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+
+  ::selection {
+    @apply bg-sage text-ink;
+  }
+}

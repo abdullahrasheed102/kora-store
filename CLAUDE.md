@@ -48,7 +48,7 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 
 ## Stack
 - `frontend/` — Next.js (latest, App Router, TypeScript) + Tailwind CSS. Deployed on **Vercel**.
-- `backend/` — Flask (Python 3.12) with SQLAlchemy 2.x, Flask-Migrate (Alembic), Marshmallow or Pydantic for validation, gunicorn. Deployed on **Render**.
+- `backend/` — Flask (Python 3.12) with SQLAlchemy 2.x, Flask-Migrate (Alembic), Pydantic for validation, gunicorn. Deployed on **Render**.
 - Database — **Neon Postgres**. Local development may use a local Postgres (docker compose) or a Neon dev branch; never SQLite, so behaviour matches production.
 - Payments — **Stripe Checkout in test mode** only.
 - `agent/` (phase 8) — Python multi-agent customer support built with LangGraph, using Groq and Gemini models. It calls the backend's `/api/agent/*` endpoints as tools and is exposed to the site through a chat endpoint. Includes an evaluation set (`agent/evals/`) of test conversations with expected outcomes.
@@ -66,7 +66,7 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 
 ## Conventions
 - Backend: app factory (`create_app`), config from environment variables only, `.env.example` kept up to date. Type hints everywhere. Errors return JSON `{ "error": { "code", "message" } }` with proper HTTP status codes.
-- Frontend: server components by default; client components only where interactivity is needed. Fetch data through a small typed API client in `frontend/lib/api.ts`. Cart state in a React context persisted to localStorage.
+- Frontend: server components by default; client components only where interactivity is needed. Cache Components is on: anything reading `params`/`searchParams` or doing an uncached fetch goes inside `<Suspense>`, so `npm run build` never needs the API. Read `frontend/node_modules/next/dist/docs/` before using a Next.js API (this version differs from older ones). Fetch data through a small typed API client in `frontend/lib/api.ts`. Cart state in a React context persisted to localStorage.
 - Design: clean, warm, editorial look. Fonts Fraunces (headings) + Inter (body). Palette: ink `#1f1b16`, background `#f7f3ec`, card `#fffdf9`, accent `#b4532a`, sage `#dfe6d6`. Fully responsive and accessible (labels, focus states, alt text, keyboard navigation).
 - Product images: no copyrighted brand imagery. Use `image_url` fields (royalty-free photos or generated placeholders); admins can change them.
 - Tests: pytest for the backend (models, pricing, checkout webhook, auth, order lookup). Add tests with each phase. Run them before saying a phase is done.
