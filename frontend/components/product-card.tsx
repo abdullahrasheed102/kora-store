@@ -1,27 +1,48 @@
 import Link from "next/link";
 
 import { ProductArt } from "@/components/product-art";
+import { ProductPhoto } from "@/components/product-photo";
 import { swatchColor } from "@/lib/colors";
 import { formatPriceRange } from "@/lib/format";
+import { cardImages } from "@/lib/product-images";
 import type { ProductSummary } from "@/lib/types";
 
 const MAX_SWATCHES = 4;
+// Card width at each breakpoint (the grid has 2 / 3 / 4 columns), so phones get a small file.
+const CARD_SIZES = "(min-width: 1280px) 300px, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw";
 
 export function ProductCard({ product, priority = false }: { product: ProductSummary; priority?: boolean }) {
   const extraColors = product.colors.length - MAX_SWATCHES;
+  const { main, hover } = cardImages(product.images, product.colors);
+  const art = (
+    <ProductArt
+      name={product.name}
+      slug={product.slug}
+      categorySlug={product.category_slug}
+      color={main?.color ?? product.colors[0]}
+      imageUrl={product.image_url}
+      eager={priority}
+      sizes={CARD_SIZES}
+      className="h-full w-full"
+    />
+  );
   return (
     <Link href={`/products/${product.slug}`} className="group block rounded-sm">
-      <div className="relative">
-        <ProductArt
-          name={product.name}
-          slug={product.slug}
-          categorySlug={product.category_slug}
-          color={product.colors[0]}
-          imageUrl={product.image_url}
-          priority={priority}
-          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-          className="aspect-[4/5] rounded-sm transition duration-500 group-hover:scale-[1.02]"
-        />
+      <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-card">
+        {/* Slow, small zoom on hover; motion-safe: skipped when the visitor asks for reduced motion. */}
+        <div className="absolute inset-0 transition-transform duration-500 ease-calm motion-safe:group-hover:scale-[1.04]">
+          {main ? <ProductPhoto image={main} fallback={art} sizes={CARD_SIZES} eager={priority} /> : art}
+          {hover && (
+            // Fades in over the product photo on hover. Lazy: most visitors never hover most cards.
+            <ProductPhoto
+              image={hover}
+              fallback={null}
+              sizes={CARD_SIZES}
+              decorative
+              className="opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+            />
+          )}
+        </div>
         <div className="absolute left-3 top-3 flex flex-col gap-1.5">
           {!product.in_stock && <Badge tone="ink">Sold out</Badge>}
           {product.is_final_sale && <Badge tone="accent">Final sale</Badge>}

@@ -215,6 +215,11 @@ In Next.js 16, *Middleware* is called **Proxy**. It runs before the page, so log
 
 ### Account pages and Cache Components
 
+After **login, signup and logout** we do a full page load (`window.location.assign`), not a client-side navigation.
+Production Next.js prefetches visible links, so pages prefetched while logged out (like the redirect from `/account`
+to `/login`) could otherwise be reused after login, and pages cached while logged in could reappear after logout.
+(Found during Phase 5 end-to-end testing; see guide 05.)
+
 Reading `cookies()` is request data, so each account page reads the user inside `<Suspense>`. Even the active link in
 the account menu (`usePathname()`) streams in, with a plain menu as the fallback. Forms use `onSubmit`, not
 `<form action>`, because React 19 resets a form after an action. That would wipe the email after a wrong password.

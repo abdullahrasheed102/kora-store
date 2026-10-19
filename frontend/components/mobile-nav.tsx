@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef } from "react";
 
 import { CloseIcon, MenuIcon, SearchIcon } from "@/components/icons";
-import { NAV_CATEGORIES, POLICY_LINKS } from "@/lib/site";
+import { ABOUT_LINK, HELP_LINKS, NAV_CATEGORIES, POLICY_LINKS } from "@/lib/site";
 
 // A native <dialog> opened with showModal() gives us focus trapping, Escape to close and an
 // inert background for free: better accessibility than a hand-made overlay.
@@ -96,6 +96,18 @@ export function MobileNav() {
               </ul>
               <h2 className="mt-10 text-xs font-medium uppercase tracking-widest text-muted">Help</h2>
               <ul className="mt-3 space-y-2 text-sm">
+                <li>
+                  <Link href={ABOUT_LINK.href} className="hover:text-accent">
+                    {ABOUT_LINK.title}
+                  </Link>
+                </li>
+                {HELP_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="hover:text-accent">
+                      {link.title}
+                    </Link>
+                  </li>
+                ))}
                 {POLICY_LINKS.map((policy) => (
                   <li key={policy.key}>
                     <Link href={`/policies/${policy.key}`} className="hover:text-accent">

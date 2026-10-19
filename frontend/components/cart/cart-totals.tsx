@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useCart } from "@/components/cart/cart-provider";
 import { formatPrice } from "@/lib/format";
 
@@ -48,22 +50,17 @@ export function CartTotals() {
   );
 }
 
-export function CheckoutButton() {
+export function CheckoutButton({ onNavigate }: { onNavigate?: () => void }) {
   const { quote, isUpdating } = useCart();
-  const ready = quote && quote.subtotal_cents > 0 && !isUpdating;
-  return (
-    <div>
-      {/* Checkout (Stripe) is built in phase 4. */}
-      <button
-        type="button"
-        disabled
-        className="h-13 w-full rounded-full bg-ink py-4 text-sm font-medium text-paper disabled:cursor-not-allowed disabled:bg-ink/30"
-      >
-        Checkout
-      </button>
-      <p className="mt-2 text-center text-xs text-muted">
-        {ready ? "Secure checkout opens in the next update." : "Taxes calculated at checkout."}
-      </p>
-    </div>
+  const ready = Boolean(quote && quote.subtotal_cents > 0 && !quote.has_issues && !isUpdating);
+  const className = "flex h-13 w-full items-center justify-center rounded-full py-4 text-sm font-medium transition";
+  return ready ? (
+    <Link href="/checkout" onClick={onNavigate} className={`${className} bg-ink text-paper hover:bg-accent`}>
+      Checkout
+    </Link>
+  ) : (
+    <span aria-disabled="true" className={`${className} cursor-not-allowed bg-ink/30 text-paper`}>
+      Checkout
+    </span>
   );
 }

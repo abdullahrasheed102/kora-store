@@ -7,13 +7,14 @@ How a session works:
 2. On POST/PUT/PATCH/DELETE, the frontend copies csrf_access_token into the X-CSRF-TOKEN header.
    Flask-JWT-Extended checks the header matches the value inside the JWT. Another website can make
    the browser *send* our cookies, but it can't *read* them, so it can't set the header.
-3. The JWT only holds the user id. The user is loaded from the database on each request, so a role
-   change or a deleted account takes effect immediately.
+3. The JWT holds the user id, plus the role as a routing hint for the frontend. Flask ignores that
+   hint: the user is loaded from the database on each request, so a role change or a deleted account
+   takes effect immediately.
 """
 
 from typing import Any
 
-from flask import Flask, Response, jsonify
+from flask import Flask, Response, current_app, jsonify
 from flask_jwt_extended import create_access_token, set_access_cookies, unset_jwt_cookies
 
 from app.extensions import db, jwt
@@ -21,7 +22,13 @@ from app.models import User
 
 
 def start_session(response: Response, user: User) -> None:
-    set_access_cookies(response, create_access_token(identity=str(user.id)))
+    # Without max_age the library keeps the cookie for a year, long after the 7-day token inside
+    # it has expired. Matching them means the browser forgets the session when it really ends.
+    lifetime = current_app.config["JWT_ACCESS_TOKEN_EXPIRES"]
+    # "role" is a HINT for the frontend (proxy.ts redirects admins away from /account before any
+    # page renders). Flask never trusts it: permissions always come from the user row in the DB.
+    token = create_access_token(identity=str(user.id), additional_claims={"role": user.role.value})
+    set_access_cookies(response, token, max_age=int(lifetime.total_seconds()))
 
 
 def end_session(response: Response) -> None:

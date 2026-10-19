@@ -3,13 +3,13 @@ import { Suspense } from "react";
 
 import { ShopResults } from "@/components/shop/shop-results";
 import { ShopSkeleton } from "@/components/skeletons";
-import { parseShopFilters } from "@/lib/shop-url";
+import { parseShopFilters, tagLabel } from "@/lib/shop-url";
 
 export async function generateMetadata({ searchParams }: PageProps<"/shop">): Promise<Metadata> {
-  const { q } = parseShopFilters(await searchParams);
-  return q
-    ? { title: `Search: ${q}`, robots: { index: false } } // search result pages shouldn't be indexed
-    : { title: "Shop all", description: "Browse every Kora Outfitters product." };
+  const { q, tag } = parseShopFilters(await searchParams);
+  if (q) return { title: `Search: ${q}`, robots: { index: false } }; // search result pages shouldn't be indexed
+  if (tag) return { title: tagLabel(tag), description: `${tagLabel(tag)} at Kora Outfitters.` };
+  return { title: "Shop all", description: "Browse every Kora Outfitters product." };
 }
 
 export default function ShopPage({ searchParams }: PageProps<"/shop">) {

@@ -4,12 +4,15 @@ Importing this package registers every table on `db.metadata`, which Alembic rea
 autogenerate migrations.
 """
 
-from app.models.catalog import Product, ProductVariant
+from app.models.catalog import Product, ProductImage, ProductVariant
+from app.models.newsletter import NewsletterSubscriber
 from app.models.order import ORDER_NUMBER_START, Order, OrderEvent, OrderItem, order_number_seq
+from app.models.payment import StripeEvent
 from app.models.policy import Policy
 from app.models.support import ReturnRequest, SupportTicket
 from app.models.types import (
     EventActor,
+    ImageKind,
     OrderStatus,
     ReturnCreatedBy,
     ReturnStatus,
@@ -26,18 +29,22 @@ __all__ = [
     "ORDER_NUMBER_START",
     "Address",
     "EventActor",
+    "ImageKind",
+    "NewsletterSubscriber",
     "Order",
     "OrderEvent",
     "OrderItem",
     "OrderStatus",
     "Policy",
     "Product",
+    "ProductImage",
     "ProductVariant",
     "ReturnCreatedBy",
     "ReturnRequest",
     "ReturnStatus",
     "ReturnType",
     "ShippingMethod",
+    "StripeEvent",
     "SupportTicket",
     "TicketPriority",
     "TicketSource",

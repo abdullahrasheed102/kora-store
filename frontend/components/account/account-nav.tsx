@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTransition } from "react";
 
 import { useCart } from "@/components/cart/cart-provider";
@@ -51,7 +51,6 @@ export function AccountNavFallback() {
 }
 
 export function LogoutButton() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { closeDrawer } = useCart();
   return (
@@ -61,10 +60,10 @@ export function LogoutButton() {
       onClick={async () => {
         await api.logout().catch(() => undefined); // even if this fails, leave the account area
         closeDrawer();
-        startTransition(() => {
-          router.push("/");
-          router.refresh();
-        });
+        // Full page load: drops every page the client router cached while logged in, so no
+        // private data stays in memory (or reappears with the Back button).
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- deliberate: reset all client state on logout
+        startTransition(() => window.location.assign("/"));
       }}
       className="px-4 py-2 text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
     >

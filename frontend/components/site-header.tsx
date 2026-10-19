@@ -1,8 +1,10 @@
 import Form from "next/form";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { AccountLink, AccountLinkFallback } from "@/components/account-link";
 import { CartButton } from "@/components/cart/cart-button";
-import { SearchIcon, UserIcon } from "@/components/icons";
+import { SearchIcon } from "@/components/icons";
 import { MobileNav } from "@/components/mobile-nav";
 import { AUTHOR, NAV_CATEGORIES } from "@/lib/site";
 
@@ -57,13 +59,9 @@ export function SiteHeader() {
             <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
           </Form>
 
-          <Link
-            href="/account"
-            className="inline-flex size-10 items-center justify-center rounded-full hover:bg-line/60"
-            aria-label="Your account"
-          >
-            <UserIcon className="size-6" />
-          </Link>
+          <Suspense fallback={<AccountLinkFallback />}>
+            <AccountLink />
+          </Suspense>
           <CartButton />
         </div>
       </div>

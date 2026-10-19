@@ -69,6 +69,10 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 - Frontend: server components by default; client components only where interactivity is needed. Cache Components is on: anything reading `params`/`searchParams` or doing an uncached fetch goes inside `<Suspense>`, so `npm run build` never needs the API. Read `frontend/node_modules/next/dist/docs/` before using a Next.js API (this version differs from older ones). Fetch data through a small typed API client in `frontend/lib/api.ts`. Cart state in a React context persisted to localStorage.
 - Design: clean, warm, editorial look. Fonts Fraunces (headings) + Inter (body). Palette: ink `#1f1b16`, background `#f7f3ec`, card `#fffdf9`, accent `#b4532a`, sage `#dfe6d6`. Fully responsive and accessible (labels, focus states, alt text, keyboard navigation).
 - Product images: no copyrighted brand imagery. Use `image_url` fields (royalty-free photos or generated placeholders); admins can change them.
+- Site photos: originals go in `image-originals/site/` or `image-originals/products/` (git-ignored); `cd frontend && npm run images` writes WebP files to `frontend/public/images/`, which are committed. Use `next/image` with alt text and a `sizes` value matching the layout; only the homepage hero uses `preload`.
+- Product photos: name originals `{product-slug}-{color-slug}` or `{product-slug}-lifestyle` (e.g. `linen-button-up-shirt-sky-blue.jpeg`). `npm run images` pads colour photos to 4:5 (never crops them), centre-crops lifestyle photos, and rewrites `backend/seed/image-manifest.json` (committed). Then `cd backend && flask images sync` (idempotent; never resets data) fills `product_images`. `flask images check` reports misnamed and missing photos without changing anything. Never rename a photo without asking.
+- Homepage sections are chosen by product **tags** (`new`, `autumn-edit`, `bestseller`), never by product ids; the perks strip reads policy `summary` fields. The AI assistant button is switched by `NEXT_PUBLIC_ASSISTANT_ENABLED`.
+- Animation: calm (200–500ms, `ease-calm`, no bounce), only `opacity`/`transform`, never on the LCP image. Use CSS where it's simple and `Reveal` (Motion, `m` components inside `LazyMotion`) for scroll reveals. Every animation must respect `prefers-reduced-motion` (fade or nothing).
 - Tests: pytest for the backend (models, pricing, checkout webhook, auth, order lookup). Add tests with each phase. Run them before saying a phase is done.
 - Never commit secrets. Stripe keys, database URLs and the agent key come from environment variables.
 
@@ -77,5 +81,6 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 Order dates are relative (`created_days_ago`, `delivered_days_ago`, `estimated_delivery_in_days`) — the seed script converts them to real dates at seed time so the demo never goes stale. Run `flask seed --reset` to rebuild demo data. Demo orders are guest orders (no user account) using the emails in the file.
 
 ## Commands (keep these working)
-- Backend: `cd backend && flask db upgrade && flask seed --reset && flask run` · tests: `pytest`
-- Frontend: `cd frontend && npm run dev` · checks: `npm run lint && npm run build`
+- Backend: `cd backend && flask db upgrade && flask seed --reset && flask run` · tests: `pytest` · after adding photos: `flask images sync`
+- Frontend: `cd frontend && npm run dev` · checks: `npm test && npm run lint && npm run build`
+- Production: Render runs `backend/start.sh` (migrations → image sync → gunicorn, settings in `render.yaml` and `backend/gunicorn.conf.py`); Vercel builds `frontend/`. Steps in `DEPLOY.md`. Never run `flask seed --reset` against Neon.

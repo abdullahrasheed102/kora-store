@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { useCart } from "@/components/cart/cart-provider";
-import { ProductArt } from "@/components/product-art";
+import { LinePhoto } from "@/components/cart/line-photo";
 import { formatPrice } from "@/lib/format";
 import { MAX_QUANTITY } from "@/lib/cart-store";
 import type { CartQuoteItem } from "@/lib/types";
@@ -32,14 +32,7 @@ export function CartLines({ onNavigate, compact = false }: { onNavigate?: () => 
           <li key={item.variant_id} className="flex gap-4 py-5">
             {item.product_slug ? (
               <Link href={`/products/${item.product_slug}`} onClick={onNavigate} className="shrink-0">
-                <ProductArt
-                  name={item.product_name ?? "Product"}
-                  slug={item.product_slug}
-                  categorySlug={item.category_slug ?? ""}
-                  color={item.color}
-                  imageUrl={item.image_url}
-                  className={`${compact ? "w-20" : "w-24 sm:w-28"} aspect-[4/5] rounded-sm`}
-                />
+                <LinePhoto item={item} sizes="112px" className={`${compact ? "w-20" : "w-24 sm:w-28"} aspect-[4/5]`} />
               </Link>
             ) : (
               <div className={`${compact ? "w-20" : "w-24 sm:w-28"} aspect-[4/5] shrink-0 rounded-sm bg-line/60`} />

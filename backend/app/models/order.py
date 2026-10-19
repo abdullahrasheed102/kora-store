@@ -40,6 +40,8 @@ class Order(db.Model):
         ),
         # The total can never disagree with its parts, whatever code wrote the row.
         CheckConstraint("total_cents = subtotal_cents + shipping_cents", name="total_adds_up"),
+        # For the expiry job: "pending_payment orders older than X".
+        Index("ix_orders_status_created_at", "status", "created_at"),
     )
 
     id: Mapped[IntPK]

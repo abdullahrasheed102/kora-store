@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { StatusBadge } from "@/components/account/status-badge";
 import { TextSkeleton } from "@/components/skeletons";
-import { accountApi, requireUser } from "@/lib/api-server";
+import { accountApi, requireCustomer } from "@/lib/api-server";
 import { COUNTRY_NAMES, formatDate, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
@@ -18,14 +18,15 @@ export default function AccountPage() {
 }
 
 async function Overview() {
-  const user = await requireUser("/account");
+  const user = await requireCustomer("/account");
   const [orders, addresses] = await Promise.all([accountApi.orders(), accountApi.addresses()]);
   const defaultAddress = addresses.find((address) => address.is_default);
 
   return (
     <div className="space-y-12">
       <section>
-        <p className="font-serif text-2xl">Hello, {user.name.split(" ")[0]}.</p>
+        {/* The full name: "first word" broke for names like "Store Admin" ("Hello, Store."). */}
+        <p className="font-serif text-2xl">Hello, {user.name}.</p>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-muted">Name</dt>

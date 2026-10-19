@@ -53,6 +53,11 @@ class EventActor(StrEnum):
     AGENT = "agent"
 
 
+class ImageKind(StrEnum):
+    PRODUCT = "product"  # the garment on its own, one per colour
+    LIFESTYLE = "lifestyle"  # the garment being worn
+
+
 class ReturnType(StrEnum):
     REFUND = "refund"
     EXCHANGE = "exchange"

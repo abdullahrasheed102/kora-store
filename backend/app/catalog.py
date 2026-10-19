@@ -13,7 +13,7 @@ from sqlalchemy import ColumnElement, Select, exists, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.errors import APIError
-from app.models import Order, OrderItem, OrderStatus, Policy, Product, ProductVariant
+from app.models import Order, OrderItem, OrderStatus, Policy, Product, ProductImage, ProductVariant
 
 SortOption = Literal["best_selling", "newest", "price_asc", "price_desc", "name_asc"]
 
@@ -28,6 +28,8 @@ UNSOLD_STATUSES = (OrderStatus.PENDING_PAYMENT, OrderStatus.CANCELLED)
 class ProductListQuery(BaseModel):
     category: str | None = Field(None, max_length=60)  # category *slug*, e.g. "gift-cards"
     q: str | None = Field(None, max_length=100)
+    # A merchandising tag, e.g. "new" or "autumn-edit" (lowercase letters, digits, hyphens).
+    tag: str | None = Field(None, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=40)
     size: list[str] = Field(default_factory=list, max_length=20)
     color: list[str] = Field(default_factory=list, max_length=20)
     min_price: int | None = Field(None, ge=0)  # cents
@@ -89,15 +91,16 @@ def _category_name_for_slug(session: Session, slug: str) -> str:
 def list_products(session: Session, query: ProductListQuery) -> dict[str, Any]:
     category = _category_name_for_slug(session, query.category) if query.category else None
 
-    # Facets use only category + search, so choosing "M" doesn't hide the other sizes.
-    base_filters = _base_filters(category, query.q)
+    # Facets use only category + tag + search, so choosing "M" doesn't hide the other sizes.
+    base_filters = _base_filters(category, query.q, query.tag)
     filters = base_filters + _variant_and_price_filters(query)
 
     total = session.scalar(select(func.count()).select_from(Product).where(*filters)) or 0
 
     stmt = (
         _sorted(select(Product).where(*filters), query.sort)
-        .options(selectinload(Product.variants))  # 1 extra query for ALL variants, not 1 per product
+        # 1 extra query each for ALL variants and ALL images, not 1 per product (the N+1 problem)
+        .options(selectinload(Product.variants), selectinload(Product.images))
         .limit(query.per_page)
         .offset((query.page - 1) * query.per_page)
     )
@@ -113,10 +116,12 @@ def list_products(session: Session, query: ProductListQuery) -> dict[str, Any]:
     }
 
 
-def _base_filters(category: str | None, q: str | None) -> list[ColumnElement[bool]]:
+def _base_filters(category: str | None, q: str | None, tag: str | None = None) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [Product.is_active]
     if category:
         filters.append(Product.category == category)
+    if tag:
+        filters.append(Product.tags.contains([tag]))  # tags @> '{new}': can use the GIN index
     if q:
         # ILIKE = case-insensitive LIKE. Fine for a catalog this size; a big catalog would
         # use Postgres full-text search or a trigram index instead.
@@ -201,7 +206,7 @@ def _facets(session: Session, base_filters: list[ColumnElement[bool]]) -> dict[s
 
 
 def product_summary(product: Product) -> dict[str, Any]:
-    """The fields a product card needs. Expects product.variants to be loaded already."""
+    """The fields a product card needs. Expects product.variants and product.images to be loaded already."""
     prices = [variant.effective_price_cents for variant in product.variants] or [product.price_cents]
     return {
         "slug": product.slug,
@@ -215,14 +220,22 @@ def product_summary(product: Product) -> dict[str, Any]:
         "is_final_sale": product.is_final_sale,
         "in_stock": any(variant.stock > 0 for variant in product.variants),
         "colors": _unique([variant.color for variant in product.variants]),
+        "tags": product.tags,
+        # Already in gallery order. Products whose photos aren't ready yet get [] and the
+        # site shows a placeholder.
+        "images": [image_dict(image) for image in product.images],
     }
+
+
+def image_dict(image: ProductImage) -> dict[str, Any]:
+    return {"url": image.url, "alt_text": image.alt_text, "kind": image.kind, "color": image.color}
 
 
 def get_product(session: Session, slug: str) -> dict[str, Any]:
     product = session.scalars(
         select(Product)
         .where(Product.slug == slug, Product.is_active)
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.images))
     ).one_or_none()
     if product is None:
         raise APIError("product_not_found", f"No product called '{slug}'.", 404)
@@ -234,7 +247,7 @@ def get_product(session: Session, slug: str) -> dict[str, Any]:
             ),
             "best_selling",
         )
-        .options(selectinload(Product.variants))
+        .options(selectinload(Product.variants), selectinload(Product.images))
         .limit(RELATED_LIMIT)
     ).all()
 
@@ -280,6 +293,7 @@ def policy_dict(policy: Policy) -> dict[str, Any]:
     return {
         "key": policy.key,
         "title": policy.title,
+        "summary": policy.summary,
         "body": policy.body,
         "updated_at": policy.updated_at.isoformat(),
     }

@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { api, ApiError, safeNextPath } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { postLoginPath } from "@/lib/session-hint";
 
 type Mode = "login" | "signup";
 
@@ -12,8 +13,7 @@ const inputClass =
   "mt-1.5 h-12 w-full rounded-sm border border-line bg-card px-4 text-base placeholder:text-muted/70 focus:border-ink/50 focus:outline-none focus-visible:outline-2";
 
 export function AuthForm({ mode }: { mode: Mode }) {
-  const router = useRouter();
-  const next = safeNextPath(useSearchParams().get("next"));
+  const next = useSearchParams().get("next");
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -27,15 +27,16 @@ export function AuthForm({ mode }: { mode: Mode }) {
     const email = String(form.get("email") ?? "");
     const password = String(form.get("password") ?? "");
     try {
-      if (mode === "signup") {
-        await api.signup({ email, password, name: String(form.get("name") ?? "") });
-      } else {
-        await api.login({ email, password });
-      }
-      startTransition(() => {
-        router.replace(next);
-        router.refresh(); // re-render server components with the new session cookie
-      });
+      const { user } =
+        mode === "signup"
+          ? await api.signup({ email, password, name: String(form.get("name") ?? "") })
+          : await api.login({ email, password });
+      // Admins go to /admin, customers back to where they came from (or /account).
+      const destination = postLoginPath(user.role, next);
+      // A full page load, not router.replace(): the client router may hold pages prefetched while
+      // logged out (e.g. /account → "redirect to /login"). Reloading drops every cached page, so
+      // everything renders fresh with the new session cookie.
+      startTransition(() => window.location.assign(destination));
     } catch (caught) {
       setError(messageFor(caught));
     }
@@ -101,7 +102,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       <p className="text-center text-sm text-muted">
         {mode === "signup" ? "Already have an account?" : "New to Kora?"}{" "}
         <Link
-          href={`/${mode === "signup" ? "login" : "signup"}${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`}
+          href={`/${mode === "signup" ? "login" : "signup"}${next ? `?next=${encodeURIComponent(next)}` : ""}`}
           className="font-medium text-ink underline underline-offset-4 hover:text-accent"
         >
           {mode === "signup" ? "Log in" : "Create an account"}

@@ -28,7 +28,7 @@ export function CartDrawer() {
       onClick={(event) => {
         if (event.target === dialog.current) closeDrawer(); // backdrop click
       }}
-      className="ml-auto mr-0 h-dvh max-h-none w-full max-w-md bg-paper p-0 text-ink backdrop:bg-ink/40 sm:w-[28rem]"
+      className="drawer ml-auto mr-0 h-dvh max-h-none w-full max-w-md bg-paper p-0 text-ink sm:w-[28rem]"
     >
       <div className="flex h-full flex-col">
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
@@ -72,7 +72,7 @@ export function CartDrawer() {
             </div>
             <div className="space-y-4 border-t border-line px-5 py-5">
               <CartTotals />
-              <CheckoutButton />
+              <CheckoutButton onNavigate={closeDrawer} />
               <Link href="/cart" onClick={closeDrawer} className="block text-center text-sm font-medium underline underline-offset-4 hover:text-accent">
                 View bag and shipping options
               </Link>

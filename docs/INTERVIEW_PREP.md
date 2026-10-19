@@ -216,6 +216,88 @@ The filter panel keeps no state: each change builds a new URL with a helper and 
 renders the matching products. I wrap the navigation in `useTransition` so the panel shows a pending state, and the
 active-filter chips are plain links, so removing a filter works even before JavaScript loads.
 
+### 9. How did you optimise the site's images?
+
+**Answer:** In two stages. At build time, a Node script uses sharp to convert the original 3 MB JPEGs to WebP at
+quality 80, capped at 2400px wide for the hero and 1200px for everything else. It skips files that haven't changed
+and prints sizes before and after. The seven photos went from 23 MB to 1.2 MB. At request time, `next/image`
+generates several widths and the `sizes` attribute lets the browser pick the smallest one that's still sharp; I
+checked in the network panel that a phone downloads about 245 KB of photos for the homepage, compared with 256px
+tiles on desktop. Images below the fold load lazily, and only the hero is preloaded because it's the LCP element.
+
+### 10. What does the `sizes` attribute do, and what happens if you get it wrong?
+
+**Answer:** `next/image` produces a `srcset`, a list of the same image at different widths. `sizes` tells the
+browser how wide the image will actually be on screen at each breakpoint, before the CSS has loaded, so it can choose
+from the `srcset`. If you leave it out on a `fill` image, the browser assumes the image is as wide as the screen and
+a phone downloads a full-width version for a small thumbnail. If you make it too small, images look blurry on
+high-density screens. I matched each `sizes` value to the layout, like "50vw on phones, a third of the screen on
+tablets, 200px on large desktops" for the category tiles.
+
+### 11. Why aren't the original photos committed to git?
+
+**Answer:** Git stores every version of every file forever. The originals are about 3 MB each and are never served
+to visitors, so committing them would make the repository permanently bigger and every clone slower, and replacing a
+photo would add another 3 MB to history rather than replacing it. I commit only the optimised WebP files, which the
+site actually uses, and keep the originals out with `.gitignore`. The trade-off is that originals need their own
+backup, since WebP can't be turned back into a full-quality original. A larger team might use Git LFS or object
+storage for source assets.
+
+### 12. How do product photos get from a folder on your laptop into the API?
+
+**Answer:** I name each photo `{product-slug}-{color-slug}` or `{product-slug}-lifestyle` and run `npm run images`.
+A sharp script converts it to a 4:5 WebP in `public/images/products/` and rewrites a manifest,
+`backend/seed/image-manifest.json`, that lists every optimised file. Both are committed. Then `flask images sync`
+reads the manifest, works out which product and colour each name belongs to from the database, and inserts or
+updates `product_images` rows with generated alt text. The products API returns those rows, and the frontend renders
+them with `next/image`. The manifest exists because the backend runs on Render and can't see the frontend's files, so
+it needs a small committed list to learn which photos exist.
+
+### 13. Your sync command runs on every deploy. How do you make that safe?
+
+**Answer:** It's idempotent: running it again gives the same result. Each file's URL is unique in the table, so the
+command looks up the existing row by URL and inserts, updates or skips it. A second run reports
+`0 added, 0 updated, 34 unchanged`. It only touches `product_images`, and only rows whose URL is under
+`/images/products/`, so orders, users and hand-added photos are never changed. It runs in one transaction, so a crash
+can't leave half the rows updated. Rows for files that disappeared are deleted, so a rename can't leave a broken
+image. A test proves orders and users are untouched, and `flask images check` gives a dry run.
+
+### 14. Product photos come in different shapes. Why pad them instead of cropping?
+
+**Answer:** Every card in the grid must be the same 4:5 shape. Cropping a square product photo to 4:5 cuts the sides,
+which on a shirt are the sleeves, so the photo no longer shows the whole product. Padding keeps every pixel: the
+script adds strips to the short sides, filled with the colour sampled from that edge, and on a plain studio
+background you can't see the join. Lifestyle photos are different: they show a scene, so a centre crop is fine
+there. A bug taught me to verify this by measuring: sharp's `.stats()` ignored my `.extract()`, so the first version
+padded with the average colour of the whole photo, which made a visible grey band.
+
+### 15. How is your homepage merchandised, and why not hard-code the featured products?
+
+**Answer:** With tags. Products have a `tags` array column (`new`, `bestseller`, `autumn-edit`), and each homepage
+section asks the API for a tag, like `GET /api/products?tag=new`. An admin edits tags in the product form, and the
+homepage changes on the next request with no deploy. Hard-coded ids break silently when a product is deactivated,
+and every change needs a developer. I used a Postgres array with a GIN index instead of a separate tags table
+because tags are short labels with no data of their own. The query is `tags @> '{new}'`, which the GIN index can
+answer. The same tag powers the "Shop the edit" link, `/shop?tag=autumn-edit`.
+
+### 16. How did you add animation without hurting performance or accessibility?
+
+**Answer:** I animate only `opacity` and `transform`, which the browser can animate without re-doing layout, so
+layout shift stayed at 0. The hero text uses plain CSS, and the hero image isn't animated because it's the LCP
+element. Scroll reveals use Motion with `LazyMotion` and the small `m` components to load only the features I need,
+about 33 KB gzipped. I measured with and without it, and the Lighthouse score didn't change beyond noise. For
+reduced motion, `MotionConfig reducedMotion="user"` turns off movement, CSS media queries swap slides for fades,
+and a CSS rule removes the starting offset so sections don't jump. I verified that in a test browser by sampling
+the element's transform.
+
+### 17. Your newsletter endpoint returns the same message for new and existing emails. Why?
+
+**Answer:** If "already subscribed" had a different response, anyone could type in an email and learn whether that
+person is on our list. That's an enumeration leak, the same reason order tracking returns one identical 404. The
+endpoint also lets the database enforce uniqueness with `INSERT … ON CONFLICT (email) DO NOTHING` instead of
+"check, then insert", which two simultaneous requests could both pass. It accepts JSON only, which also blocks
+cross-site HTML form posts, and it's rate limited per IP.
+
 ---
 
 ## Phase 3 — Cart and accounts
@@ -288,3 +370,336 @@ fast hash like SHA-256 lets them do that on graphics cards. argon2id is delibera
 graphics cards much less useful, and it's the current OWASP recommendation. Each hash has a random salt stored inside
 it. Rehashing on login is about the future: if I increase the cost settings, old hashes are still weaker. The only
 moment I have the plain password is a successful login, so I check `check_needs_rehash` then and save a new hash.
+
+---
+
+## Phase 4 — Payments with Stripe
+
+### 1. Walk me through your checkout flow.
+
+**Answer:** The browser sends variant ids, quantities, the address and the shipping method. Flask re-prices
+everything from the database with the same function the cart uses, creates the order as `pending_payment` with
+snapshots of each item, and creates a Stripe Checkout Session with the line items, the shipping amount, our order id
+in the metadata, a 30-minute expiry and an idempotency key. The browser is redirected to Stripe's hosted page, so
+card details never touch our servers. When payment succeeds, Stripe sends a signed webhook. That is what marks the
+order paid and decrements stock, inside a transaction with row locks. The success page polls until it sees the
+order is processing, then shows the confirmation.
+
+### 2. Why fulfil orders from the webhook and not from the success page redirect?
+
+**Answer:** The redirect isn't reliable or trustworthy. The shopper can close the tab, lose their connection, or
+never reach the success URL, and anyone can type that URL into a browser. The webhook is server-to-server, signed
+with a secret, and Stripe retries it for days until we return a 2xx. So the webhook is the source of truth, and the
+success page only *reads* the order status, polling for a few seconds until the webhook has been processed.
+
+### 3. How do you verify that a webhook really came from Stripe?
+
+**Answer:** Stripe signs each webhook: it computes an HMAC-SHA256 of the timestamp plus the raw request body, using
+a webhook secret that only Stripe and we know, and sends it in the `Stripe-Signature` header. We recompute it with
+`stripe.Webhook.construct_event`. A forged or modified body fails the check, and we return 400. The timestamp is also
+checked against a 5-minute tolerance, which stops replay attacks with old genuine events. One detail matters: we
+verify the *raw* bytes from `request.get_data()`, because parsing and re-serialising the JSON would change the bytes
+and break the signature.
+
+### 4. Webhooks can arrive more than once. How is your handler idempotent?
+
+**Answer:** Two layers. First, a `stripe_events` table with the Stripe event id as the primary key. I insert it in
+the same transaction as the fulfilment: if the event was already processed, the row exists and we stop; if the
+earlier attempt crashed, its insert rolled back, so the retry runs normally. Second, I lock the order row with
+`SELECT ... FOR UPDATE` and only fulfil if it's still `pending_payment`, which covers two *different* events for the
+same order. In the other direction, my calls *to* Stripe use idempotency keys like `checkout-order-42`, so a
+network retry can't create two sessions or two refunds.
+
+### 5. Explain the race condition when two people buy the last item, and how you prevented it.
+
+**Answer:** Without locking, two webhooks can run at the same moment. Both read `stock = 1`, both compute zero, and
+both write zero. Both orders are fulfilled, one item is sold twice, and the `CHECK stock >= 0` constraint doesn't
+help because zero is valid. That's a lost update. I lock the variant rows with `SELECT ... FOR UPDATE`, so the second
+transaction waits until the first commits and then reads `stock = 0`. I always lock in id order to avoid deadlocks.
+I have a test that sends both webhooks from two threads at once; with the lock one order is fulfilled and the other
+cancelled and refunded. I also ran it with the lock removed, and it failed with both fulfilled.
+
+### 6. Stock is only taken after payment. What happens if it sells out while someone is paying?
+
+**Answer:** That's the trade-off of not reserving stock. Abandoned checkouts never hold stock, but very occasionally
+two people pay for the last item. The webhook detects it under the row lock, cancels the order with a clear note, and
+refunds automatically through Stripe with an idempotency key. The refund call happens after the transaction commits,
+because holding row locks during a network call would block other checkouts for those products. If the refund call
+fails, it's logged and the order is marked as needing a manual refund. For a limited-edition drop I'd switch to
+reserving stock at checkout and releasing it when the session expires.
+
+### 7. How do unpaid orders expire?
+
+**Answer:** Three layers. The Stripe session has `expires_at` set to 30 minutes, so after that nobody can pay it.
+Stripe then sends `checkout.session.expired`, and the handler cancels the order if it's still pending. Because
+webhooks can be missed, a CLI command, `flask orders expire-unpaid`, cancels pending orders older than an hour. It
+uses `FOR UPDATE SKIP LOCKED` so it never fights with a webhook processing the same order, and it refuses a cut-off
+shorter than the session lifetime. There's also an edge case: a payment arriving for an order we'd already
+cancelled triggers an automatic refund.
+
+### 8. What did end-to-end testing find that unit tests didn't?
+
+**Answer:** My unit tests replace Stripe with a fake that accepts any parameters. When I ran the whole flow in a
+browser against stripe-mock, Stripe's official mock server that validates requests against the current API schema,
+checkout failed: in this Stripe API version, `payment_method_types` had been replaced by
+`allowed_payment_method_types`. Every real checkout would have failed. I fixed it and added a test that checks every
+parameter we send exists in the installed Stripe library's type definitions. The lesson: mocks only test what you
+assume, so you need at least one test against something that knows the real contract.
+
+### 9. Why did you build your own sandbox payment provider?
+
+**Answer:** Stripe doesn't support accounts in Pakistan, so I couldn't get keys, and checkout would just stop. I
+didn't want to fake it by skipping payment, because the interesting engineering is in the webhook: signature
+verification, idempotency and locking stock. So I built a sandbox provider that behaves like Stripe: a hosted payment
+page clearly labelled "no real money", Stripe's test card numbers (4242 succeeds, 4000…0002 is declined), and a
+webhook event in Stripe's shape, signed with HMAC-SHA256 plus a timestamp. The order is still only fulfilled by a
+verified webhook, through exactly the same handler. It's the default, so the live demo works for anyone, and Stripe
+is one environment variable away.
+
+### 10. What is the adapter pattern, and how did you use it?
+
+**Answer:** An adapter translates between the interface your code wants and the interface something else provides,
+like a travel plug adapter. I defined a `PaymentProvider` abstract base class with four methods:
+`create_checkout_session`, `verify_webhook`, `parse_event` and `refund_payment`. Checkout builds a provider-neutral
+`CheckoutRequest`, with nothing Stripe-specific in it. `StripeProvider` translates that into Stripe's API parameters
+and uses Stripe's library to verify webhooks; `SandboxProvider` creates its own session and verifies its own
+signatures. Both produce events in the same shape, so the webhook handler, the idempotency table and the stock logic
+didn't change at all. To prove the Stripe behaviour was unchanged, all 35 existing Stripe tests passed after the
+move. Adding PayPal or JazzCash would mean writing one new class.
+
+### 11. Explain how HMAC webhook signing works.
+
+**Answer:** The sender and receiver share a secret. To sign, the sender takes the current Unix timestamp, joins it to
+the exact raw body with a dot, and computes HMAC-SHA256 of that with the secret. It sends `t=<timestamp>,v1=<hex
+digest>` in a header. The receiver parses the header, rejects timestamps older than five minutes to stop replay
+attacks, recomputes the HMAC over the raw bytes, and compares with `hmac.compare_digest`. Without the secret nobody
+can produce a valid signature, and changing one byte of the body, or the timestamp, which is inside the HMAC, breaks
+it. Two subtle points: verify the raw bytes before parsing the JSON, because re-serialising can change them; and use
+a constant-time comparison, because a normal `==` returns faster the earlier the strings differ, which leaks
+information an attacker can measure.
+
+### 12. Your sandbox "sends itself" a webhook. Why not just make an HTTP request to your own URL?
+
+**Answer:** Because it can deadlock. In production, gunicorn might run one synchronous worker. That worker is busy
+handling the payment request; if it makes an HTTP request to itself and waits for the answer, there's no free worker
+to answer, so it waits forever. I also didn't want to call the handler function directly, because that would skip
+signature verification, the part I most wanted to exercise. So I use Flask's `test_client()`: it builds a real
+request and runs it in-process through the full stack — routing, error handlers, signature and timestamp checks, and
+the webhook handler — without a network hop. With a real provider, the webhook would come from Stripe's servers
+instead, and nothing else changes.
+
+---
+
+## Phase 5 — Order tracking and returns
+
+### 1. How does your order tracking avoid leaking information?
+
+**Answer:** Guests track with order number plus email, and I look them up in one query: `WHERE order_number = ? AND
+email = ?`. If I fetched by number and then compared emails, there would be two failure paths, "no such order" and
+"wrong email", which could differ in message, status code, or timing. With one query there's one path, and every
+failure returns the same 404 with the same message. The response also leaves out the street address and payment
+details, because knowing an order number and an email isn't strong proof of identity. And it's a POST, so the email
+never ends up in URLs, logs or browser history.
+
+### 2. How did you rate limit order lookups, and why only count failures?
+
+**Answer:** With Flask-Limiter's shared limits: tracking, return eligibility and creating a return share one budget,
+so switching endpoints doesn't give extra attempts. There are two keys: per IP, 10 a minute and 60 an hour, and per
+order number, 20 an hour, which stops many IPs guessing emails for one known order. I set `deduct_when` so only
+404 responses count. The threat is guessing, and every wrong guess is a miss; a successful lookup tells the caller
+nothing they didn't already know. I found this was needed in browser testing: a real customer tracking an order,
+checking eligibility and submitting a return was hitting the limit.
+
+### 3. How did you turn the returns policy into code?
+
+**Answer:** I took each sentence of the policy and made it a small, named function that returns either nothing or a
+refusal with a code and a human message: delivered only, not cancelled, not already returned, within 30 days of
+delivery, no final-sale items, quantities minus open returns, the condition confirmation, free US labels versus
+international customers paying, and exchanges only for an in-stock variant of the same product. The current time is
+a parameter, not read inside the rules, so tests can check any moment. There's one test per rule, plus boundary
+tests: day 30 is allowed, 30 days plus one minute isn't. The codes matter for Phase 8: the AI agent will call the
+same functions and use the codes to decide what to tell the customer.
+
+### 4. Why does final sale use the order item, not the product?
+
+**Answer:** Because the rule should apply to what was true when the customer bought it. Order items snapshot the
+product name, price and final-sale flag at purchase time. If we later stop marking the socks as final sale, someone
+who bought them under the final-sale terms shouldn't suddenly be able to return them, and the other way round. I
+have a test that changes the product today and checks the old order still refuses the socks.
+
+### 5. The frontend already disables non-returnable items. Why check again on the server?
+
+**Answer:** Because the frontend is a convenience, not a security boundary. Anyone can send a request directly with
+curl or DevTools. `create_return` re-runs every rule against the exact request and returns a 422 with the refusal
+code if something isn't allowed. It also locks the order row with `SELECT ... FOR UPDATE` while it checks quantities
+and inserts the request, so a double click or two tabs can't both return the last unit of an item. That's the same
+lesson as decrementing stock in Phase 4.
+
+### 6. What is boundary testing? Give an example from your project.
+
+**Answer:** Testing exactly at the edge of a rule, because off-by-one mistakes hide there. The return window is
+"within 30 days of delivery". I test exactly 30 days after delivery, which should be allowed, and 30 days plus one
+minute, which shouldn't. That decides whether the comparison is `>` or `>=`. A related bug I found: the "days left"
+counter used `timedelta.days`, which rounds down, so with 7 days and 23 hours left it said 7 days. I changed it to
+round up and added a test.
+
+### 7. Describe a bug that only appeared in production.
+
+**Answer:** After signing up, users were sent back to the login page. The API returned 201 and the cookies were set
+correctly. The cause was Next.js prefetching: in production it prefetches visible links, and the header's "Your
+account" link was prefetched while the visitor was logged out, so the client router cached "redirect to /login".
+After signup, the client-side navigation reused that cached redirect. It never appeared in development because `next
+dev` doesn't prefetch, which is also why my earlier tests passed. I fixed it by doing a full page load after login,
+signup and logout. That clears every client-side cache, which is also good for privacy on logout. The lesson: run
+end-to-end tests against a production build.
+
+### 8. How do logged-in customers start a return without typing their email?
+
+**Answer:** The lookup takes either an email or the logged-in user. With an email, it matches number plus email;
+without one, it matches number plus `user_id` from the verified session cookie. So a customer coming from their
+account's order page only needs the order number, and the request carries the CSRF header like every other write.
+We never match a logged-in user to guest orders by email, because emails aren't verified; someone could sign up with
+your address. If an order isn't linked to the account, they enter the email like a guest.
+
+---
+
+## Phase 6 — Admin dashboard
+
+### 1. What's the difference between authentication and authorization, and between 401 and 403?
+
+**Answer:** Authentication is proving who you are; here, a valid JWT cookie. Authorization is deciding what you're
+allowed to do; here, whether your role is admin. A logged-in customer is authenticated but not authorized for admin
+routes. The status codes follow that: 401 means "not authenticated, log in", and 403 means "authenticated, but
+forbidden". My admin API returns 401 with no cookie and 403 for a customer, and both have tests.
+
+### 2. How do you make sure every admin route is protected?
+
+**Answer:** Two ways. In the code, the check isn't on the routes at all: it's a `before_request` hook on the admin
+blueprint, so it runs before every route in it, including any added later. It verifies the JWT, which also enforces
+CSRF on writes, then checks the role. In the tests, I don't list routes by hand. I loop over Flask's URL map, find
+everything under `/api/admin`, and check that anonymous gets 401, a customer gets 403 even with a valid CSRF header,
+and an admin gets through. Another test asserts the loop found at least 15 routes, so a broken discovery can't pass
+silently. I also disabled the hook once to confirm the tests fail.
+
+### 3. If you remove someone's admin role, when does it take effect?
+
+**Answer:** On their next request. The JWT only contains the user id. On every request, Flask-JWT-Extended's user
+loader fetches the user from the database, and the admin check reads the role from that fresh row. If I'd put the
+role inside the token, a demoted admin would keep admin access until the token expired, up to 7 days. The cost is
+one primary-key lookup per request, which is negligible. There's a test that demotes an admin and checks the same
+cookie gets 403 straight away.
+
+### 4. Why do admins adjust stock with +/- changes instead of typing the new number?
+
+**Answer:** To avoid a lost update. The admin's page shows 25, a customer buys one so it's really 24, then the admin
+types 35 after receiving 10. Saving an absolute 35 would erase the sale. Instead the API takes a change, `+10`, and
+applies it in one SQL statement: `UPDATE ... SET stock = stock + 10 WHERE id = ? AND stock + 10 >= 0`. Postgres does
+that atomically against the current value under a row lock, so the result is 34 and both changes count. The WHERE
+clause also refuses anything that would go negative. There's a test with exactly this scenario.
+
+### 5. Explain the order state machine and why you need one.
+
+**Answer:** It's a table of allowed moves: processing can go to shipped, partially shipped or cancelled; shipped can
+go to out for delivery, delayed or delivered; delivered, cancelled and returned are final. The server refuses
+anything else with a 409 that lists the allowed moves, and the detail endpoint exposes `allowed_next_statuses` so the
+UI only offers valid choices. Each status has its own rules: shipping needs a carrier and tracking number, a delay
+needs a note for the customer, and delivered starts the return window. Without it, a misclick could produce
+impossible histories like delivered then processing, which would confuse customers, the tracking page and the AI
+agent.
+
+### 6. What is an audit trail, and how did you build one?
+
+**Answer:** A record of who changed what and when, which isn't edited afterwards. Every order and return change
+inserts a row into `order_events` with the status, a note, a timestamp and `created_by`: system for webhooks, admin
+for staff, and agent for the AI assistant in Phase 8. Rows are only ever added. The same table drives the customer's
+tracking timeline, the admin's history view and, later, the agent's view of what happened. A gap I'd close next is
+product and policy edits, which aren't logged yet; I'd add an admin actions table with the user id and before/after
+values.
+
+### 7. How are the dashboard statistics computed?
+
+**Answer:** With SQL aggregates, so Postgres does the work and returns a few numbers instead of every order:
+`SUM(total_cents)` and `COUNT(*)` filtered to paid statuses and the last 7 or 30 days, a `GROUP BY` on
+`date_trunc('day', created_at)` for the daily chart, a `GROUP BY status` for the breakdown, and a join with a
+`stock <= 5` filter for low stock. Python only fills in days with no sales so the chart has 30 bars. The test
+recomputes the same totals a different way, in Python from the orders, and compares.
+
+### 8. Your admin UI hides the admin area from customers with a 404. Isn't that security through obscurity?
+
+**Answer:** It would be if it were the only protection, but it isn't. The real boundary is the Flask check on every
+admin API call: even if a customer found the pages, every request returns 403. The 404 is about not advertising the
+area and giving a clean experience. The page gate, the proxy redirect and the 404 are courtesies; the server is the
+lock. That's the same rule as in Phase 5, where the returns page disables final-sale items but the server still
+refuses them.
+
+### 9. Your proxy reads the user's role from the JWT without verifying it. Isn't that insecure?
+
+**Answer:** It would be if the role decided access, but it only decides routing. At login Flask adds a `role` claim
+to the token as a hint. The Next.js proxy reads it, without the secret, to redirect an admin from `/account` to
+`/admin` before the customer page renders, and the header uses it to show an Admin badge. Every decision about
+data is made by Flask, which ignores the claim and reads the role from the database on each request. If someone
+forges "admin", they're redirected to `/admin`, the page asks Flask, and they get a 404, with 403 from every admin
+API. I have a test where even a validly signed token claiming admin for a customer gets 403. The rule: the UI can
+hide and redirect, but only the backend enforces.
+
+---
+
+## Phase 7 — Deployment
+
+### 1. Walk me through how your app is deployed.
+
+**Answer:** Three managed services on free plans, all in US East. The Next.js site is on Vercel, the Flask API on
+Render, and Postgres on Neon. The browser only talks to Vercel, which forwards `/api` to Render, so cookies are
+first-party and there's no CORS. Render's setup is code in `render.yaml`. On each deploy it installs pinned packages
+and runs `start.sh`, which applies Alembic migrations, syncs product photos, then `exec`s gunicorn. Pushing to
+`main` redeploys both apps. An hourly GitHub Actions job cancels unpaid orders, because Render's free plan has no
+cron jobs.
+
+### 2. Why gunicorn, and why one worker with four threads?
+
+**Answer:** `flask run` is a development server. Gunicorn is a production WSGI server that manages workers, kills
+stuck requests after a timeout, and shuts down gracefully on deploys. Our requests mostly wait on the database, and
+threads share that waiting well. A single process also keeps the in-memory rate-limit counters correct: with three
+workers, each would count separately and every limit would triple. The production config refuses `memory://` rate
+limits with more than one worker. To scale up I'd move the counters to Redis and raise the worker count.
+
+### 3. How do you connect to a serverless database like Neon safely and reliably?
+
+**Answer:** Safely: the connection string must have `sslmode=require`, and the production config refuses to start
+without it. Reliably: Neon's compute sleeps after five idle minutes and drops connections, so SQLAlchemy uses
+`pool_pre_ping` and recycles connections after five minutes. Otherwise the first request after a quiet period fails.
+I use Neon's pooled endpoint, which is PgBouncer in transaction mode. Consecutive transactions can land on different
+server connections there, so I turn off psycopg's automatic prepared statements, which live on a single connection.
+
+### 4. What's the difference between a liveness and a readiness check, and why do you have both?
+
+**Answer:** Liveness asks "is the process running?" and readiness asks "can it do its job, for example reach the
+database?". Render's health check uses liveness, `/api/health/live`, with no query. If it ran `SELECT 1` every few
+seconds, Neon's compute could never sleep, and we'd burn the free compute hours. A database blip could also make
+Render restart a perfectly healthy process. `/api/health` still checks the database for people and monitoring, and
+the start script runs migrations first, so a deploy can't succeed without a working database.
+
+### 5. How do you stop a misconfigured production deploy?
+
+**Answer:** It fails fast. `ProductionConfig` checks the environment at startup and refuses to run if a secret is
+shorter than 32 characters or still a placeholder, if `FRONTEND_URL` isn't https, if a remote database URL lacks
+TLS, if Stripe is missing a key, or if in-memory rate limits meet several workers. It lists every problem at once,
+so one failed deploy shows everything to fix. Because the start script runs `set -e`, a failing migration also stops
+the new version from starting. A loud, clear failure on deploy is much better than a site quietly running insecurely.
+
+### 6. Which security headers do you send, and why does your CSP allow inline scripts?
+
+**Answer:** The API returns only JSON, so it gets the strictest policy: `default-src 'none'`, no framing, `nosniff`,
+no referrer, and HSTS. The website sends HSTS, `nosniff`, `X-Frame-Options`, a permissions policy, and a CSP that
+limits scripts, fonts and API calls to our own origin and forbids framing and plugins. Next.js needs small inline
+scripts. The strict fix is a nonce per response, but that forces every page to render per request and we'd lose the
+prerendered static shell. So I allow inline scripts and keep everything else locked down. React's escaping is the
+main defence against injected HTML anyway.
+
+### 7. How does your rate limiter know the real client IP behind two proxies?
+
+**Answer:** Each proxy appends to `X-Forwarded-For`, so the chain is "client, Vercel" and Render's load balancer is
+the direct peer. `ProxyFix(x_for=2)` takes the second value from the right, the address our first trusted proxy
+saw. Anything further left could be typed by the client, so we never trust it. If the count is too low, attackers
+can fake their IP. If it's too high, everyone falls back to the load balancer's IP and shares one rate limit. I log
+the chain in gunicorn's access log and checked it on the live site instead of assuming.

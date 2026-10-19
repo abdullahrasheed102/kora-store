@@ -41,7 +41,7 @@ export function FilterPanel({ category, categories, facets, filters }: Props) {
         <ul className="mt-3 space-y-2">
           <li>
             <Link
-              href={shopHref(undefined, { q: filters.q, sort: filters.sort })}
+              href={shopHref(undefined, { q: filters.q, tag: filters.tag, sort: filters.sort })}
               aria-current={!category ? "page" : undefined}
               className={!category ? "font-semibold text-ink" : "text-ink/75 hover:text-ink"}
             >
@@ -51,7 +51,7 @@ export function FilterPanel({ category, categories, facets, filters }: Props) {
           {categories.map((item) => (
             <li key={item.slug} className="flex justify-between">
               <Link
-                href={shopHref(item.slug, { q: filters.q, sort: filters.sort })}
+                href={shopHref(item.slug, { q: filters.q, tag: filters.tag, sort: filters.sort })}
                 aria-current={item.slug === category ? "page" : undefined}
                 className={item.slug === category ? "font-semibold text-ink" : "text-ink/75 hover:text-ink"}
               >

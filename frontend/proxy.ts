@@ -1,16 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-// Runs before /account pages render. It only checks that a session cookie EXISTS, which is
-// cheap and early: logged-out visitors get a real redirect instead of a flash of the page.
-// It does NOT check the cookie is valid. Flask does that on every API call, so a fake cookie
-// gets past this check but still sees no data (see lib/api-server.ts requireUser).
+import { roleHint } from "@/lib/session-hint";
+
+const SESSION_COOKIE = "access_token_cookie";
+
+// Runs BEFORE /account and /admin pages render, so a redirect happens before anything is drawn.
+// These are optimistic, routing-only checks on the cookie. They don't verify the token; Flask
+// does that (and checks the real role in the database) on every API call the page makes.
 export function proxy(request: NextRequest) {
-  if (!request.cookies.has("access_token_cookie")) {
+  const { pathname } = request.nextUrl;
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+
+  if (!token) {
     const login = new URL("/login", request.url);
-    login.searchParams.set("next", request.nextUrl.pathname);
+    login.searchParams.set("next", pathname);
     return NextResponse.redirect(login);
+  }
+
+  // Admins don't use the customer account pages: send them to their dashboard instead,
+  // before the customer page has a chance to flash on screen.
+  const isAccountPage = pathname === "/account" || pathname.startsWith("/account/");
+  if (isAccountPage && roleHint(token) === "admin") {
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/account", "/account/:path*"] };
+export const config = { matcher: ["/account", "/account/:path*", "/admin", "/admin/:path*"] };

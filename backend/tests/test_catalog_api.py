@@ -65,6 +65,8 @@ def test_product_card_fields(client: FlaskClient, seeded: SeedCounts) -> None:
         "is_final_sale": True,
         "in_stock": True,
         "colors": ["Digital"],
+        "tags": [],
+        "images": [],  # no photo synced in this test
     }
 
 

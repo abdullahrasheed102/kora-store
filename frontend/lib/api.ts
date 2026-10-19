@@ -4,12 +4,25 @@ import type {
   AddressInput,
   CartQuote,
   Category,
+  CheckoutRequest,
+  AdminOrder,
+  AdminProduct,
+  AdminReturn,
+  CreateReturnRequest,
+  OrderDetail,
+  ReturnEligibility,
+  ReturnRequestView,
+  TrackingResult,
   HealthStatus,
   Policy,
   ProductDetail,
+  ProductInput,
   ProductPage,
   ProductQuery,
+  SandboxCard,
+  SandboxSession,
   ShippingMethod,
+  Ticket,
   User,
 } from "@/lib/types";
 
@@ -87,6 +100,7 @@ export const api = {
   product: (slug: string) => request<ProductDetail>(`/products/${encodeURIComponent(slug)}`),
   categories: () => request<Category[]>("/categories"),
   policies: () => request<Policy[]>("/policies"),
+  newsletter: (email: string) => request<{ message: string }>("/newsletter", json("POST", { email })),
   policy: (key: string) => request<Policy>(`/policies/${encodeURIComponent(key)}`),
   health: () => request<HealthStatus>("/health"),
 
@@ -102,12 +116,54 @@ export const api = {
   createAddress: (body: AddressInput) => request<Address>("/account/addresses", json("POST", body)),
   updateAddress: (id: number, body: AddressInput) => request<Address>(`/account/addresses/${id}`, json("PUT", body)),
   deleteAddress: (id: number) => request<void>(`/account/addresses/${id}`, json("DELETE")),
+
+  // Checkout: the server creates a pending order and a Stripe page, and returns its URL.
+  createCheckout: (body: CheckoutRequest) =>
+    request<{ order_number: string; checkout_url: string }>("/checkout/session", json("POST", body)),
+  // Sandbox provider: our own hosted payment page (used when PAYMENT_PROVIDER=sandbox).
+  sandboxSession: (sessionId: string) => request<SandboxSession>(`/sandbox/sessions/${encodeURIComponent(sessionId)}`),
+  sandboxPay: (sessionId: string, card: SandboxCard) =>
+    request<{ redirect_url: string }>(`/sandbox/sessions/${encodeURIComponent(sessionId)}/pay`, json("POST", card)),
+
+  // Tracking and returns. POST so the email never lands in URLs, logs or browser history.
+  trackOrder: (order_number: string, email: string) =>
+    request<TrackingResult>("/orders/track", json("POST", { order_number, email })),
+  // email may be left out when logged in and the order belongs to the account.
+  returnEligibility: (order_number: string, email?: string) =>
+    request<ReturnEligibility>("/returns/eligibility", json("POST", { order_number, email })),
+  createReturn: (body: CreateReturnRequest) => request<ReturnRequestView>("/returns", json("POST", body)),
+
+  contact: (body: { name: string; email: string; order_number?: string; subject: string; message: string }) =>
+    request<{ id: number }>("/support/contact", json("POST", body)),
+
+  // Admin writes (browser only; Flask checks the admin role on every one).
+  admin: {
+    createProduct: (body: ProductInput) => request<AdminProduct>("/admin/products", json("POST", body)),
+    updateProduct: (id: number, body: Partial<ProductInput>) => request<AdminProduct>(`/admin/products/${id}`, json("PATCH", body)),
+    addVariant: (productId: number, body: { sku: string; size: string; color: string; stock: number; price_cents: number | null }) =>
+      request<AdminProduct>(`/admin/products/${productId}/variants`, json("POST", body)),
+    updateVariant: (id: number, body: { stock_change?: number; price_cents?: number; clear_price_override?: boolean }) =>
+      request<AdminProduct>(`/admin/variants/${id}`, json("PATCH", body)),
+    updateOrderStatus: (
+      number: string,
+      body: { status: string; note?: string; carrier?: string; tracking_number?: string; estimated_delivery?: string },
+    ) => request<AdminOrder>(`/admin/orders/${encodeURIComponent(number)}/status`, json("POST", body)),
+    updateReturnStatus: (id: number, body: { status: string; note?: string }) =>
+      request<AdminReturn>(`/admin/returns/${id}/status`, json("POST", body)),
+    updateTicket: (id: number, body: { status?: string; priority?: string }) =>
+      request<Ticket>(`/admin/tickets/${id}`, json("PATCH", body)),
+    updatePolicy: (key: string, body: { title: string; summary: string; body: string }) =>
+      request<{ key: string }>(`/admin/policies/${encodeURIComponent(key)}`, json("PUT", body)),
+  },
+
+  // Public, but only works with the payment session id the buyer got in their redirect URL.
+  confirmation: (orderNumber: string, sessionId: string) =>
+    request<OrderDetail>(
+      `/orders/${encodeURIComponent(orderNumber)}/confirmation?session_id=${encodeURIComponent(sessionId)}`,
+    ),
 };
 
-/** Only allow redirects to our own pages. `?next=https://evil.example` must not work (open redirect). */
-export function safeNextPath(next: string | null | undefined, fallback = "/account"): string {
-  return next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\") ? next : fallback;
-}
+export { safeNextPath } from "@/lib/session-hint";
 
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404;

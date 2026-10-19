@@ -14,6 +14,23 @@
 
   --font-serif: var(--font-fraunces), Georgia, serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;
+
+  /* Motion: short and calm. One easing curve everywhere (fast start, gentle stop, no bounce). */
+  --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-up: fade-up 500ms var(--ease-calm) both;
+  --animate-fade-in: fade-in 400ms var(--ease-calm) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 
 @layer base {
@@ -28,5 +45,68 @@
 
   ::selection {
     @apply bg-sage text-ink;
+  }
+}
+
+/* Cart drawer: a native <dialog> that slides in from the right. Pure CSS:
+   @starting-style gives the "before" state when it opens, and transition-behavior: allow-discrete
+   lets display/overlay wait for the slide-out before the dialog disappears. Browsers without
+   these features just open and close it instantly. */
+@layer components {
+  .drawer {
+    translate: 100% 0;
+    transition:
+      translate 350ms var(--ease-calm),
+      overlay 350ms allow-discrete,
+      display 350ms allow-discrete;
+  }
+  .drawer[open] {
+    translate: 0 0;
+  }
+  .drawer::backdrop {
+    background-color: rgb(31 27 22 / 0);
+    transition:
+      background-color 350ms var(--ease-calm),
+      overlay 350ms allow-discrete,
+      display 350ms allow-discrete;
+  }
+  .drawer[open]::backdrop {
+    background-color: rgb(31 27 22 / 0.4);
+  }
+  @starting-style {
+    .drawer[open] {
+      translate: 100% 0;
+    }
+    .drawer[open]::backdrop {
+      background-color: rgb(31 27 22 / 0);
+    }
+  }
+}
+
+/* Reduced motion: no sliding or rising, only short fades. */
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    translate: none;
+    opacity: 0;
+    transition:
+      opacity 200ms ease-out,
+      overlay 200ms allow-discrete,
+      display 200ms allow-discrete;
+  }
+  .drawer[open] {
+    opacity: 1;
+  }
+  @starting-style {
+    .drawer[open] {
+      opacity: 0;
+    }
+  }
+  .animate-fade-up {
+    animation-name: fade-in;
+  }
+  /* Reveal (components/motion/reveal.tsx) starts 16px low in the server HTML. Motion won't
+     animate that movement for these visitors, so without this the section would jump into place. */
+  [data-reveal] {
+    transform: none !important;
   }
 }

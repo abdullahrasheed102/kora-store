@@ -56,6 +56,7 @@ erDiagram
     users ||--o{ addresses : "saves"
     users |o--o{ orders : "places (NULL for guests)"
     products ||--|{ product_variants : "comes in"
+    products ||--o{ product_images : "photographed in"
     orders ||--|{ order_items : "contains"
     product_variants |o--o{ order_items : "sold as"
     orders ||--|{ order_events : "has timeline"
@@ -88,6 +89,15 @@ erDiagram
         bool is_final_sale
         string restock_note
         bool is_active
+    }
+    product_images {
+        int id PK
+        int product_id FK
+        string color "NULL for lifestyle"
+        string kind "product | lifestyle"
+        string url UK "/images/products/..."
+        string alt_text
+        int position "gallery order"
     }
     product_variants {
         int id PK

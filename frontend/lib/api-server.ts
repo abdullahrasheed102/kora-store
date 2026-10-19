@@ -4,10 +4,24 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ApiError, request } from "@/lib/api";
-import type { Address, OrderDetail, OrderSummary, User } from "@/lib/types";
+
+import type {
+  Address,
+  AdminOrder,
+  AdminOrderRow,
+  AdminProduct,
+  AdminProductRow,
+  AdminReturn,
+  AdminStats,
+  OrderDetail,
+  OrderSummary,
+  Paged,
+  Ticket,
+  User,
+} from "@/lib/types";
 
 async function authed<T>(path: string): Promise<T> {
   const cookieHeader = (await cookies()).toString();
@@ -35,4 +49,45 @@ export const accountApi = {
   addresses: () => authed<Address[]>("/account/addresses"),
   orders: () => authed<OrderSummary[]>("/account/orders"),
   order: (orderNumber: string) => authed<OrderDetail>(`/account/orders/${encodeURIComponent(orderNumber)}`),
+};
+
+/**
+ * For customer account pages: like requireUser, but admins are sent to /admin. proxy.ts already
+ * does this before rendering; this second check covers sessions without the role hint (e.g. logged
+ * in before it existed) and uses the role from the database.
+ */
+export async function requireCustomer(next: string): Promise<User> {
+  const user = await requireUser(next);
+  if (user.role === "admin") redirect("/admin");
+  return user;
+}
+
+/**
+ * For admin pages: logged-out visitors go to login; logged-in non-admins get a 404, so the admin
+ * area doesn't even admit it exists. (Every admin API call is ALSO checked by Flask; this is the
+ * page-level courtesy, not the security boundary.)
+ */
+export async function requireAdmin(next: string): Promise<User> {
+  const user = await requireUser(next);
+  if (user.role !== "admin") notFound();
+  return user;
+}
+
+function query(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) if (value !== undefined && value !== "") search.set(key, String(value));
+  const text = search.toString();
+  return text ? `?${text}` : "";
+}
+
+export const adminApi = {
+  stats: () => authed<AdminStats>("/admin/stats"),
+  products: (params: { q?: string; active?: string; page?: number }) =>
+    authed<Paged<AdminProductRow>>(`/admin/products${query(params)}`),
+  product: (id: string) => authed<AdminProduct>(`/admin/products/${encodeURIComponent(id)}`),
+  orders: (params: { q?: string; status?: string; page?: number }) =>
+    authed<Paged<AdminOrderRow>>(`/admin/orders${query(params)}`),
+  order: (number: string) => authed<AdminOrder>(`/admin/orders/${encodeURIComponent(number)}`),
+  returns: (params: { status?: string; page?: number }) => authed<Paged<AdminReturn>>(`/admin/returns${query(params)}`),
+  tickets: (params: { status?: string; page?: number }) => authed<Paged<Ticket>>(`/admin/tickets${query(params)}`),
 };

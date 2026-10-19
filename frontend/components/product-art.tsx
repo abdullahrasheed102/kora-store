@@ -73,15 +73,15 @@ type Props = {
   imageUrl?: string | null;
   className?: string;
   sizes?: string; // for next/image: how wide the image is at each breakpoint
-  priority?: boolean;
+  eager?: boolean; // load immediately (e.g. the first row of a grid) instead of lazily
 };
 
-export function ProductArt({ name, slug, categorySlug, color, imageUrl, className = "", sizes, priority }: Props) {
+export function ProductArt({ name, slug, categorySlug, color, imageUrl, className = "", sizes, eager }: Props) {
   if (imageUrl) {
     return (
       <div className={`relative overflow-hidden bg-card ${className}`}>
         {/* unoptimized: admins can paste any image URL, and we don't want our server to proxy arbitrary hosts. */}
-        <Image src={imageUrl} alt={name} fill sizes={sizes} priority={priority} unoptimized className="object-cover" />
+        <Image src={imageUrl} alt={name} fill sizes={sizes} loading={eager ? "eager" : "lazy"} unoptimized className="object-cover" />
       </div>
     );
   }

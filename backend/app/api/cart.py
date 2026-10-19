@@ -7,17 +7,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.extensions import db
 from app.models import ShippingMethod
-from app.pricing import MAX_CART_LINES, MAX_QUANTITY_PER_ITEM, quote_cart
+from app.pricing import MAX_CART_LINES, CartLine, quote_cart
 from app.validation import parse_json
 
 bp = Blueprint("cart", __name__)
-
-
-class CartLine(BaseModel):
-    # extra="ignore": if a client sends "price_cents", it is silently dropped, never used.
-    model_config = ConfigDict(extra="ignore")
-    variant_id: int = Field(ge=1)
-    quantity: int = Field(ge=1, le=MAX_QUANTITY_PER_ITEM)
 
 
 class CartQuoteBody(BaseModel):

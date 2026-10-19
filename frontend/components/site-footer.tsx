@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AUTHOR, NAV_CATEGORIES, POLICY_LINKS, SITE_NAME } from "@/lib/site";
+import { AUTHOR, ABOUT_LINK, HELP_LINKS, NAV_CATEGORIES, POLICY_LINKS, SITE_NAME } from "@/lib/site";
 
 export function SiteFooter() {
   return (
@@ -36,6 +36,18 @@ export function SiteFooter() {
         <nav aria-label="Help">
           <h2 className="text-xs font-medium uppercase tracking-widest text-paper">Help</h2>
           <ul className="mt-4 space-y-2.5 text-sm">
+            <li>
+              <Link href={ABOUT_LINK.href} className="hover:text-paper">
+                {ABOUT_LINK.title}
+              </Link>
+            </li>
+            {HELP_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="hover:text-paper">
+                  {link.title}
+                </Link>
+              </li>
+            ))}
             {POLICY_LINKS.map((policy) => (
               <li key={policy.key}>
                 <Link href={`/policies/${policy.key}`} className="hover:text-paper">
@@ -50,7 +62,7 @@ export function SiteFooter() {
       <div className="border-t border-paper/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
           <p>
-            {SITE_NAME} is a fictional store. Payments run in Stripe test mode.
+            {SITE_NAME} is a fictional store. No real payments are taken.
           </p>
           <p>
             Designed and built by{" "}

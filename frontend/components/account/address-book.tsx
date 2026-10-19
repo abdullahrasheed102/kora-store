@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 import { api, ApiError } from "@/lib/api";
 import { COUNTRY_NAMES } from "@/lib/format";
@@ -223,12 +223,13 @@ function Field({
   required?: boolean;
   className?: string;
 }) {
+  const id = useId();
   return (
     <div className={className}>
-      <label htmlFor={name} className="text-sm font-medium">
+      <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <input id={name} name={name} defaultValue={defaultValue} autoComplete={autoComplete} required={required} className={inputClass} />
+      <input id={id} name={name} defaultValue={defaultValue} autoComplete={autoComplete} required={required} className={inputClass} />
     </div>
   );
 }

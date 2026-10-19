@@ -46,3 +46,25 @@ export const COUNTRY_NAMES: Record<string, string> = {
   CA: "Canada",
   AU: "Australia",
 };
+
+const RETURN_STATUS_LABELS: Record<string, string> = {
+  requested: "Requested",
+  approved: "Approved",
+  label_sent: "Label sent",
+  received: "Received at warehouse",
+  refunded: "Refunded",
+  rejected: "Not accepted",
+};
+
+export function returnStatusLabel(status: string): string {
+  return RETURN_STATUS_LABELS[status] ?? status;
+}
+
+export const RETURN_REASONS: { value: string; label: string }[] = [
+  { value: "doesnt_fit", label: "Doesn't fit" },
+  { value: "changed_mind", label: "Changed my mind" },
+  { value: "not_as_described", label: "Not as described" },
+  { value: "damaged", label: "Arrived damaged" },
+  { value: "wrong_item", label: "Received the wrong item" },
+  { value: "other", label: "Other" },
+];

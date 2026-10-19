@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { AddressBook } from "@/components/account/address-book";
 import { TextSkeleton } from "@/components/skeletons";
-import { accountApi, requireUser } from "@/lib/api-server";
+import { accountApi, requireCustomer } from "@/lib/api-server";
 
 export const metadata: Metadata = { title: "Your addresses", robots: { index: false } };
 
@@ -16,6 +16,6 @@ export default function AddressesPage() {
 }
 
 async function Addresses() {
-  await requireUser("/account/addresses");
+  await requireCustomer("/account/addresses");
   return <AddressBook addresses={await accountApi.addresses()} />;
 }

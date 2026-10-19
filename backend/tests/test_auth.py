@@ -40,6 +40,12 @@ def test_session_cookie_is_httponly_and_samesite(client: FlaskClient, db_session
     assert "HttpOnly" not in cookies["csrf_access_token"]
 
 
+def test_session_cookie_expires_with_the_token(client: FlaskClient, db_session: Session) -> None:
+    response = client.post("/api/auth/signup", json=SIGNUP)
+    session_cookie = next(h for h in set_cookie_headers(response) if h.startswith("access_token_cookie="))
+    assert "Max-Age=604800" in session_cookie  # 7 days, the same as the JWT's own expiry
+
+
 def test_signup_with_existing_email_is_409(client: FlaskClient, customer: User) -> None:
     response = client.post("/api/auth/signup", json={**SIGNUP, "email": CUSTOMER_EMAIL.upper()})
     assert response.status_code == 409

@@ -7,11 +7,13 @@ the cart, checkout and the seed can never disagree about a price.
 from enum import StrEnum
 from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.catalog import slugify
-from app.models import ProductVariant
+from app.models import ImageKind, Product, ProductVariant
 from app.models.types import ShippingMethod
 
 FREE_SHIPPING_THRESHOLD_CENTS = 7500  # "Free US shipping on orders over $75"
@@ -35,6 +37,15 @@ def shipping_cents(method: ShippingMethod, subtotal_cents: int) -> int:
 
 MAX_QUANTITY_PER_ITEM = 10
 MAX_CART_LINES = 50
+
+
+class CartLine(BaseModel):
+    """One line of a cart as the browser sends it: an id and a quantity, nothing else."""
+
+    # extra="ignore": if a client sends "price_cents", it is silently dropped, never used.
+    model_config = ConfigDict(extra="ignore")
+    variant_id: int = Field(ge=1)
+    quantity: int = Field(ge=1, le=MAX_QUANTITY_PER_ITEM)
 
 
 class CartIssue(StrEnum):
@@ -61,7 +72,8 @@ def quote_cart(
         for variant in session.scalars(
             select(ProductVariant)
             .where(ProductVariant.id.in_(requested))
-            .options(joinedload(ProductVariant.product))  # one query, not one per line
+            # One query for the products and one for their photos, not one per line.
+            .options(joinedload(ProductVariant.product).selectinload(Product.images))
         )
     }
 
@@ -112,6 +124,7 @@ def _quote_line(variant_id: int, requested: int, variant: ProductVariant | None)
         "product_name": product.name,
         "category_slug": slugify(product.category),
         "image_url": product.image_url,
+        "image": _color_photo(product, variant.color),
         "size": variant.size,
         "color": variant.color,
         "is_final_sale": product.is_final_sale,
@@ -122,3 +135,11 @@ def _quote_line(variant_id: int, requested: int, variant: ProductVariant | None)
         "line_total_cents": unit_price * quantity,
         "issue": issue.value if issue else None,
     }
+
+
+def _color_photo(product: Product, color: str) -> dict[str, str] | None:
+    """The photo of this exact colour, so the bag shows what the shopper picked."""
+    for image in product.images:
+        if image.kind is ImageKind.PRODUCT and image.color == color:
+            return {"url": image.url, "alt_text": image.alt_text}
+    return None

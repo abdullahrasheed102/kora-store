@@ -84,3 +84,9 @@ export const UserIcon = ({ className = "size-5" }: IconProps) => (
     <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
   </svg>
 );
+
+export const CheckIcon = ({ className = "size-5" }: IconProps) => (
+  <svg {...base} className={className}>
+    <path d="m5 12.5 4.5 4.5L19 7.5" />
+  </svg>
+);

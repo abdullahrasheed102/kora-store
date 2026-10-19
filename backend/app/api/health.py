@@ -1,4 +1,8 @@
-"""GET /api/health: is this instance up, and can it reach the database?"""
+"""Health checks.
+
+GET /api/health/live   is the process up? (no database; used by Render's health check)
+GET /api/health        is it up AND can it reach the database? (for people and monitoring)
+"""
 
 from flask import Blueprint, current_app
 from flask.typing import ResponseReturnValue
@@ -8,6 +12,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 
 bp = Blueprint("health", __name__)
+
+
+@bp.get("/health/live")
+def live() -> ResponseReturnValue:
+    """Liveness: answers without touching the database.
+
+    Render calls its health check every few seconds. If that ran a query, Neon's compute could
+    never go to sleep, and the free plan's monthly compute hours would run out. A process that
+    can't reach the database still fails loudly elsewhere: start.sh runs migrations first, and
+    /api/health reports it.
+    """
+    return {"status": "ok"}
 
 
 @bp.get("/health")

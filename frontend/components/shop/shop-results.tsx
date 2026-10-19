@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 
 import { ChevronIcon } from "@/components/icons";
 import { ProductGrid } from "@/components/product-card";
+import { CategoryBanner } from "@/components/shop/category-banner";
 import { FilterPanel, MobileFilters } from "@/components/shop/filter-panel";
 import { Pagination } from "@/components/shop/pagination";
 import { SortSelect } from "@/components/shop/sort-select";
 import { api, isNotFound } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
-import { hasActiveFilters, shopHref, type ShopFilters } from "@/lib/shop-url";
+import { hasActiveFilters, shopHref, tagLabel, type ShopFilters } from "@/lib/shop-url";
 
 const PER_PAGE = 12;
 
@@ -24,7 +25,13 @@ export async function ShopResults({ category, filters }: { category?: string; fi
   ]);
 
   const current = categories.find((item) => item.slug === category);
-  const title = filters.q ? `Results for “${filters.q}”` : (current?.name ?? "Shop all");
+  const title = filters.q
+    ? `Results for “${filters.q}”`
+    : filters.tag
+      ? tagLabel(filters.tag) + (current ? `: ${current.name}` : "")
+      : (current?.name ?? "Shop all");
+  // Category pages open with a photo banner (which holds the <h1>); search and tag pages keep a plain title.
+  const showBanner = Boolean(current && !filters.q && !filters.tag);
   const chips = activeChips(category, filters);
 
   return (
@@ -55,9 +62,11 @@ export async function ShopResults({ category, filters }: { category?: string; fi
         </ol>
       </nav>
 
+      {showBanner && current && <CategoryBanner slug={current.slug} name={current.name} />}
+
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-6">
         <div>
-          <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">{title}</h1>
+          {!showBanner && <h1 className="font-serif text-4xl tracking-tight sm:text-5xl">{title}</h1>}
           <p className="mt-2 text-sm text-muted" aria-live="polite">
             {result.total} {result.total === 1 ? "product" : "products"}
           </p>
@@ -125,6 +134,7 @@ function activeChips(category: string | undefined, filters: ShopFilters): { labe
     chips.push({ label, href: without({ min_price: undefined, max_price: undefined }) });
   }
   if (filters.q) chips.push({ label: `“${filters.q}”`, href: without({ q: undefined }) });
+  if (filters.tag) chips.push({ label: tagLabel(filters.tag), href: without({ tag: undefined }) });
   return chips;
 }
 

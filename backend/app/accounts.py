@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.errors import APIError
 from app.models import Address, Order, User
+from app.returns import return_view
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 OptionalText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None
@@ -201,6 +202,7 @@ def order_detail(order: Order) -> dict[str, Any]:
             {"status": event.status.value, "note": event.note, "created_at": event.created_at.isoformat()}
             for event in order.events
         ],
+        "returns": [return_view(request) for request in order.return_requests],
     }
 
 
@@ -221,7 +223,7 @@ def get_user_order(session: Session, user: User, order_number: str) -> Order:
     order = session.scalars(
         select(Order)
         .where(Order.order_number == order_number.upper(), Order.user_id == user.id)
-        .options(selectinload(Order.items), selectinload(Order.events))
+        .options(selectinload(Order.items), selectinload(Order.events), selectinload(Order.return_requests))
     ).one_or_none()
     if order is None:
         raise APIError("order_not_found", "Order not found.", 404)

@@ -10,6 +10,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-001-WHIT-XS",
@@ -150,6 +153,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-002-SAND-S",
@@ -220,6 +226,10 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new",
+      "autumn-edit"
+    ],
     "variants": [
       {
         "sku": "KO-003-CHAR-XS",
@@ -339,6 +349,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new"
+    ],
     "variants": [
       {
         "sku": "KO-004-HEAT-S",
@@ -423,6 +436,7 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-005-WHIT-XS",
@@ -521,6 +535,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-006-LIGH-24",
@@ -633,6 +650,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-007-KHAK-28",
@@ -773,6 +793,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new"
+    ],
     "variants": [
       {
         "sku": "KO-008-BLAC-XS",
@@ -843,6 +866,7 @@
     "is_final_sale": false,
     "restock_note": "Restock expected in about 3 weeks",
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-009-GREY-XS",
@@ -983,6 +1007,7 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-010-OLIV-28",
@@ -1081,6 +1106,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new"
+    ],
     "variants": [
       {
         "sku": "KO-011-BLAC-XS",
@@ -1200,6 +1228,10 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new",
+      "autumn-edit"
+    ],
     "variants": [
       {
         "sku": "KO-012-CAME-S",
@@ -1270,6 +1302,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new"
+    ],
     "variants": [
       {
         "sku": "KO-013-YELL-XS",
@@ -1368,6 +1403,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-014-NATU-ONESIZE",
@@ -1396,6 +1434,7 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-015-BROW-S",
@@ -1452,6 +1491,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new"
+    ],
     "variants": [
       {
         "sku": "KO-016-GREY-ONESIZE",
@@ -1487,6 +1529,9 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "bestseller"
+    ],
     "variants": [
       {
         "sku": "KO-017-WHIT-US5",
@@ -1627,6 +1672,10 @@
     "is_final_sale": false,
     "restock_note": null,
     "image_url": null,
+    "tags": [
+      "new",
+      "autumn-edit"
+    ],
     "variants": [
       {
         "sku": "KO-018-BLAC-US6",
@@ -1739,6 +1788,7 @@
     "is_final_sale": true,
     "restock_note": null,
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-019-MIXE-S",
@@ -1774,6 +1824,7 @@
     "is_final_sale": true,
     "restock_note": null,
     "image_url": null,
+    "tags": [],
     "variants": [
       {
         "sku": "KO-020-DIGI-25",

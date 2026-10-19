@@ -1,0 +1,59 @@
+# Cancels orders that started checkout but were never paid (a safety net for missed
+# "checkout expired" webhooks). Render's free plan has no cron jobs, so GitHub runs it hourly.
+#
+# Setup: GitHub repo > Settings > Secrets and variables > Actions > New repository secret
+#   DATABASE_URL = the same Neon pooled connection string Render uses.
+# Until that secret exists, the job skips itself.
+name: Expire unpaid orders
+
+on:
+  schedule:
+    - cron: "17 * * * *" # hourly at :17 (minute 0 is GitHub's busiest, so runs start late)
+  workflow_dispatch: # also a "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  expire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # Required to start the app, but this command never builds a link to the site.
+      FRONTEND_URL: https://unused.invalid
+    steps:
+      # First, because the run steps below work inside backend/, which exists only after checkout.
+      - uses: actions/checkout@v4
+
+      - name: Skip if the database secret isn't set yet
+        id: guard
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::DATABASE_URL secret is not set; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install
+        if: steps.guard.outputs.skip != 'true'
+        run: pip install -r requirements.txt
+
+      - name: Expire unpaid orders older than 60 minutes
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          # The app refuses to start without strong secrets. This command signs nothing,
+          # so throwaway random values are enough (they exist only for this run).
+          export SECRET_KEY="$(openssl rand -hex 32)" JWT_SECRET_KEY="$(openssl rand -hex 32)"
+          export SANDBOX_WEBHOOK_SECRET="$(openssl rand -hex 32)"
+          flask orders expire-unpaid --older-than 60

@@ -4,6 +4,7 @@ import { Fraunces, Inter } from "next/font/google";
 import { CartDrawer } from "@/components/cart/cart-drawer";
 import { CartProvider } from "@/components/cart/cart-provider";
 import { SiteFooter } from "@/components/site-footer";
+import { MotionProvider } from "@/components/motion/motion-provider";
 import { SiteHeader } from "@/components/site-header";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
@@ -32,14 +33,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         {/* A client component can wrap server components: they're rendered on the server and passed in as children. */}
-        <CartProvider>
-          <SiteHeader />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <SiteFooter />
-          <CartDrawer />
-        </CartProvider>
+        {/* Without JavaScript nothing would fade in, so show those sections straight away. */}
+        <noscript>
+          <style>{"[data-reveal]{opacity:1!important;transform:none!important}"}</style>
+        </noscript>
+        <MotionProvider>
+          <CartProvider>
+            <SiteHeader />
+            <main id="main" className="flex-1">
+              {children}
+            </main>
+            <SiteFooter />
+            <CartDrawer />
+          </CartProvider>
+        </MotionProvider>
       </body>
     </html>
   );

@@ -1,0 +1,54 @@
+# Render Blueprint: the backend's hosting setup, as code. Render reads this file when you
+# create a "Blueprint" from the repository (see DEPLOY.md, step 3).
+#
+# Values marked `sync: false` are secrets or URLs that differ per deployment: Render asks for
+# them once in the dashboard, and they are never stored in git.
+services:
+  - type: web
+    name: kora-api
+    runtime: python
+    plan: free
+    # Keep the API, the database (Neon) and the frontend's server (Vercel) in the same region:
+    # every page render makes several API calls, and each one crosses this distance.
+    region: virginia
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Migrations run here, not in a pre-deploy command, because the free plan has no
+    # pre-deploy step. start.sh is safe to run on every start (see the file).
+    startCommand: ./start.sh
+    # Liveness only (no database query), so Neon's free compute can still sleep.
+    healthCheckPath: /api/health/live
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.15
+      - key: APP_ENV
+        value: production
+      # Random 256-bit values made by Render on first deploy.
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SANDBOX_WEBHOOK_SECRET
+        generateValue: true
+      # Neon's POOLED connection string, ending in ?sslmode=require (DEPLOY.md, step 2).
+      - key: DATABASE_URL
+        sync: false
+      # The site's public URL on Vercel, e.g. https://kora-outfitters.vercel.app (no trailing slash).
+      - key: FRONTEND_URL
+        sync: false
+      # Browser -> Vercel -> Render's load balancer -> gunicorn: two proxies add X-Forwarded-For.
+      - key: TRUSTED_PROXY_COUNT
+        value: "2"
+      # One worker (gunicorn.conf.py), so in-memory rate-limit counters are correct.
+      # With more workers, add a Render Key Value (Redis) instance and use its redis:// URL.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: RATELIMIT_STORAGE_URI
+        value: memory://
+      # "sandbox" works from any country. "stripe" needs the two Stripe values below (test mode only).
+      - key: PAYMENT_PROVIDER
+        value: sandbox
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false

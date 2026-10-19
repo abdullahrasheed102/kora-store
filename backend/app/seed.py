@@ -18,6 +18,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.extensions import db
+from app.images import MANIFEST_PATH, format_report, load_manifest, sync_images
 from app.models import (
     ORDER_NUMBER_START,
     EventActor,
@@ -336,3 +337,10 @@ def seed_command(reset: bool) -> None:
         f"({counts.order_events} events, {counts.return_requests} return), "
         f"{counts.policies} policies, {counts.users} admin user."
     )
+
+    # Photos are not part of the JSON seed: they come from the optimized files, so attach
+    # whatever exists right now. (`flask images sync` does the same on its own.)
+    if MANIFEST_PATH.exists():
+        click.echo(format_report(sync_images(session, load_manifest(MANIFEST_PATH))))
+    else:
+        click.echo("No image manifest yet: products will show placeholders. Run `npm run images`.", err=True)

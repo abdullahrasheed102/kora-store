@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { StatusBadge } from "@/components/account/status-badge";
 import { TextSkeleton } from "@/components/skeletons";
-import { accountApi, requireUser } from "@/lib/api-server";
+import { accountApi, requireCustomer } from "@/lib/api-server";
 import { formatDate, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Your orders", robots: { index: false } };
@@ -18,7 +18,7 @@ export default function OrdersPage() {
 }
 
 async function Orders() {
-  await requireUser("/account/orders");
+  await requireCustomer("/account/orders");
   const orders = await accountApi.orders();
 
   if (orders.length === 0) {

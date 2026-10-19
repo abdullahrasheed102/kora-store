@@ -6,8 +6,9 @@ import { Suspense } from "react";
 import { StatusBadge } from "@/components/account/status-badge";
 import { TextSkeleton } from "@/components/skeletons";
 import { isNotFound } from "@/lib/api";
-import { accountApi, requireUser } from "@/lib/api-server";
-import { COUNTRY_NAMES, formatDate, formatDateTime, formatPrice, SHIPPING_LABELS, statusLabel } from "@/lib/format";
+import { accountApi, requireCustomer } from "@/lib/api-server";
+import { OrderTimeline } from "@/components/orders/order-progress";
+import { COUNTRY_NAMES, formatDate, formatPrice, returnStatusLabel, SHIPPING_LABELS } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order details", robots: { index: false } };
 
@@ -21,7 +22,7 @@ export default function OrderPage({ params }: PageProps<"/account/orders/[number
 
 async function Order({ params }: Pick<PageProps<"/account/orders/[number]">, "params">) {
   const { number } = await params;
-  await requireUser(`/account/orders/${number}`);
+  await requireCustomer(`/account/orders/${number}`);
   const order = await accountApi.order(number).catch((error) => {
     if (isNotFound(error)) notFound();
     throw error;
@@ -40,7 +41,35 @@ async function Order({ params }: Pick<PageProps<"/account/orders/[number]">, "pa
         </div>
         <p className="mt-1 text-sm text-muted">Placed {formatDate(order.created_at)}</p>
         {order.status_note && <p className="mt-3 rounded-sm bg-sage px-4 py-3 text-sm">{order.status_note}</p>}
+        {order.status === "delivered" && (
+          <Link
+            href={`/returns?order=${order.order_number}`}
+            className="mt-4 inline-block rounded-full border border-ink/20 px-5 py-2.5 text-sm font-medium hover:border-ink"
+          >
+            Start a return
+          </Link>
+        )}
       </div>
+
+      {order.returns.length > 0 && (
+        <section aria-labelledby="returns-heading">
+          <h3 id="returns-heading" className="border-b border-line pb-3 font-serif text-xl">
+            Returns
+          </h3>
+          <ul className="divide-y divide-line">
+            {order.returns.map((request) => (
+              <li key={request.id} className="flex flex-wrap justify-between gap-2 py-3 text-sm">
+                <span>
+                  {request.type === "exchange" ? "Exchange" : "Refund"} ·{" "}
+                  {request.items.map((item) => `${item.quantity} × ${item.product_name}`).join(", ")}
+                  {request.exchange_details && <span className="block text-muted">{request.exchange_details}</span>}
+                </span>
+                <span className="font-medium">{returnStatusLabel(request.status)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="items-heading">
         <h3 id="items-heading" className="border-b border-line pb-3 font-serif text-xl">
@@ -106,19 +135,9 @@ async function Order({ params }: Pick<PageProps<"/account/orders/[number]">, "pa
           <h3 id="timeline-heading" className="border-b border-line pb-3 font-serif text-xl">
             Timeline
           </h3>
-          <ol className="mt-4 space-y-4 border-l border-line pl-5">
-            {[...order.events].reverse().map((event, index) => (
-              <li key={`${event.status}-${event.created_at}`} className="relative text-sm">
-                <span
-                  aria-hidden="true"
-                  className={`absolute -left-[25px] top-1.5 size-2.5 rounded-full ${index === 0 ? "bg-accent" : "bg-line"}`}
-                />
-                <p className="font-medium">{statusLabel(event.status)}</p>
-                <p className="text-muted">{formatDateTime(event.created_at)}</p>
-                {event.note && <p className="mt-1">{event.note}</p>}
-              </li>
-            ))}
-          </ol>
+          <div className="mt-4">
+            <OrderTimeline events={order.events} />
+          </div>
         </section>
       </div>
     </div>

@@ -125,6 +125,8 @@ it in an interview. Each phase ends with tests passing, a guide in `docs/guide/`
 ### Phase 7 — Deploy
 > Deploy Flask to Render with Neon Postgres (gunicorn, migrations on deploy, environment variables, health checks, logs, the production Stripe webhook) and the frontend to Vercel with `BACKEND_URL` and production settings. Explain each step as we do it.
 
+Migrations and the image sync run in `backend/start.sh` before gunicorn starts (Render's free plan has no pre-deploy command). Both are safe to run on every start: they never reset data. Runbook: `DEPLOY.md`; guide: `docs/guide/07-deployment.md`.
+
 ✅ Done when: the live site works end to end with a test payment.
 
 **Concepts:** WSGI servers, production config, secrets management, connection pooling, cold starts, debugging from logs.
@@ -152,12 +154,12 @@ This is the part interviewers will ask about most, so it gets the most detailed 
 
 ## 5. Environment variables
 - Agent (phase 8): `GROQ_API_KEY`, `GEMINI_API_KEY`, `AGENT_API_KEY`, `BACKEND_URL`
-- Backend: `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `FRONTEND_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `AGENT_API_KEY`
-- Frontend: `BACKEND_URL`, `NEXT_PUBLIC_SITE_URL`
+- Backend: `APP_ENV`, `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `FRONTEND_URL`, `TRUSTED_PROXY_COUNT`, `WEB_CONCURRENCY`, `RATELIMIT_STORAGE_URI`, `PAYMENT_PROVIDER`, `SANDBOX_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ADMIN_EMAIL`/`ADMIN_PASSWORD` (seed only), `AGENT_API_KEY` (Phase 8). Production values: `render.yaml`
+- Frontend: `BACKEND_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_ASSISTANT_ENABLED`
 
 ## 6. Hosting notes
 - **Render free web services sleep when idle**, so the first request after a quiet period is slow. Before you send a demo link to a prospect, open the site once to wake it, or use a free uptime pinger.
-- **Neon**: use the pooled connection string, with `sslmode=require`.
+- **Neon**: use the pooled connection string, with `sslmode=require` (the backend refuses to start in production without it).
 - **Stripe**: test mode only. Add the production webhook endpoint `https://<render-app>/api/stripe/webhook` in the Stripe dashboard.
 
 ## 7. Nice-to-have later
