@@ -12,3 +12,7 @@ __pycache__/
 # Node / Next.js
 node_modules/
 .next/
+
+# Full-size original photos: large and not served. Only the optimized WebP files in
+# frontend/public/images/ are committed (run `npm run images` to regenerate them).
+image-originals/

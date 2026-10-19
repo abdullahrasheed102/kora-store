@@ -1,0 +1,395 @@
+{
+  "generated_by": "frontend/scripts/optimize-images.mjs (npm run images). Do not edit by hand.",
+  "images": [
+    {
+      "name": "canvas-tote-bag-black",
+      "url": "/images/products/canvas-tote-bag-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "canvas-tote-bag-lifestyle",
+      "url": "/images/products/canvas-tote-bag-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "canvas-tote-bag-natural",
+      "url": "/images/products/canvas-tote-bag-natural.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "chelsea-boots-black",
+      "url": "/images/products/chelsea-boots-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "chelsea-boots-lifestyle",
+      "url": "/images/products/chelsea-boots-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "chelsea-boots-tan",
+      "url": "/images/products/chelsea-boots-tan.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "classic-sneakers-black",
+      "url": "/images/products/classic-sneakers-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "classic-sneakers-lifestyle",
+      "url": "/images/products/classic-sneakers-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "classic-sneakers-white",
+      "url": "/images/products/classic-sneakers-white.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "crew-socks-3-pack-lifestyle",
+      "url": "/images/products/crew-socks-3-pack-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "crew-socks-3-pack-mixed-neutrals",
+      "url": "/images/products/crew-socks-3-pack-mixed-neutrals.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-cotton-tee-black",
+      "url": "/images/products/everyday-cotton-tee-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-cotton-tee-lifestyle",
+      "url": "/images/products/everyday-cotton-tee-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-cotton-tee-olive",
+      "url": "/images/products/everyday-cotton-tee-olive.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-cotton-tee-white",
+      "url": "/images/products/everyday-cotton-tee-white.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-joggers-black",
+      "url": "/images/products/everyday-joggers-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-joggers-grey",
+      "url": "/images/products/everyday-joggers-grey.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-joggers-lifestyle",
+      "url": "/images/products/everyday-joggers-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "everyday-joggers-navy",
+      "url": "/images/products/everyday-joggers-navy.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "gift-card-digital",
+      "url": "/images/products/gift-card-digital.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "gift-card-lifestyle",
+      "url": "/images/products/gift-card-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "leather-belt-black",
+      "url": "/images/products/leather-belt-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "leather-belt-brown",
+      "url": "/images/products/leather-belt-brown.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "leather-belt-lifestyle",
+      "url": "/images/products/leather-belt-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "lightweight-rain-shell-black",
+      "url": "/images/products/lightweight-rain-shell-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "lightweight-rain-shell-lifestyle",
+      "url": "/images/products/lightweight-rain-shell-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "lightweight-rain-shell-yellow",
+      "url": "/images/products/lightweight-rain-shell-yellow.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "linen-button-up-shirt-lifestyle",
+      "url": "/images/products/linen-button-up-shirt-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "linen-button-up-shirt-sand",
+      "url": "/images/products/linen-button-up-shirt-sand.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "linen-button-up-shirt-sky-blue",
+      "url": "/images/products/linen-button-up-shirt-sky-blue.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "merino-crew-sweater-charcoal",
+      "url": "/images/products/merino-crew-sweater-charcoal.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "merino-crew-sweater-forest",
+      "url": "/images/products/merino-crew-sweater-forest.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "merino-crew-sweater-lifestyle",
+      "url": "/images/products/merino-crew-sweater-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "merino-crew-sweater-oatmeal",
+      "url": "/images/products/merino-crew-sweater-oatmeal.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "oversized-hoodie-black",
+      "url": "/images/products/oversized-hoodie-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "oversized-hoodie-heather-grey",
+      "url": "/images/products/oversized-hoodie-heather-grey.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "oversized-hoodie-lifestyle",
+      "url": "/images/products/oversized-hoodie-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "pleated-midi-skirt-black",
+      "url": "/images/products/pleated-midi-skirt-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "pleated-midi-skirt-lifestyle",
+      "url": "/images/products/pleated-midi-skirt-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "pleated-midi-skirt-sage",
+      "url": "/images/products/pleated-midi-skirt-sage.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "quilted-puffer-jacket-black",
+      "url": "/images/products/quilted-puffer-jacket-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "quilted-puffer-jacket-clay",
+      "url": "/images/products/quilted-puffer-jacket-clay.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "quilted-puffer-jacket-lifestyle",
+      "url": "/images/products/quilted-puffer-jacket-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "quilted-puffer-jacket-navy",
+      "url": "/images/products/quilted-puffer-jacket-navy.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "relaxed-chino-pants-black",
+      "url": "/images/products/relaxed-chino-pants-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "relaxed-chino-pants-khaki",
+      "url": "/images/products/relaxed-chino-pants-khaki.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "relaxed-chino-pants-lifestyle",
+      "url": "/images/products/relaxed-chino-pants-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "relaxed-chino-pants-navy",
+      "url": "/images/products/relaxed-chino-pants-navy.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "ribbed-tank-top-black",
+      "url": "/images/products/ribbed-tank-top-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "ribbed-tank-top-lifestyle",
+      "url": "/images/products/ribbed-tank-top-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "ribbed-tank-top-rose",
+      "url": "/images/products/ribbed-tank-top-rose.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "ribbed-tank-top-white",
+      "url": "/images/products/ribbed-tank-top-white.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "straight-leg-jeans-dark-indigo",
+      "url": "/images/products/straight-leg-jeans-dark-indigo.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "straight-leg-jeans-lifestyle",
+      "url": "/images/products/straight-leg-jeans-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "straight-leg-jeans-light-wash",
+      "url": "/images/products/straight-leg-jeans-light-wash.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "utility-cargo-shorts-lifestyle",
+      "url": "/images/products/utility-cargo-shorts-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "utility-cargo-shorts-olive",
+      "url": "/images/products/utility-cargo-shorts-olive.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "utility-cargo-shorts-stone",
+      "url": "/images/products/utility-cargo-shorts-stone.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-beanie-black",
+      "url": "/images/products/wool-beanie-black.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-beanie-grey",
+      "url": "/images/products/wool-beanie-grey.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-beanie-lifestyle",
+      "url": "/images/products/wool-beanie-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-beanie-mustard",
+      "url": "/images/products/wool-beanie-mustard.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-blend-overcoat-camel",
+      "url": "/images/products/wool-blend-overcoat-camel.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-blend-overcoat-charcoal",
+      "url": "/images/products/wool-blend-overcoat-charcoal.webp",
+      "width": 1200,
+      "height": 1500
+    },
+    {
+      "name": "wool-blend-overcoat-lifestyle",
+      "url": "/images/products/wool-blend-overcoat-lifestyle.webp",
+      "width": 1200,
+      "height": 1500
+    }
+  ]
+}
