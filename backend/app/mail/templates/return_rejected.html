@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}We couldn't accept your return for order {{ order.number }}.{% endblock %}
+{% block content %}
+{{ ui.heading("About your return") }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, we've looked at your {{ ret.kind }} request for order <strong>{{ order.number }}</strong>, and unfortunately we can't accept it:{% endcall %}
+<ul style="margin:0 0 20px;padding-left:20px;">
+  {% for line in ret.lines %}<li style="margin:0 0 4px;">{{ line }}</li>{% endfor %}
+</ul>
+{{ ui.note(note) }}
+{% call ui.paragraph() %}If you think we got this wrong, just reply to this email and a person on our team will take another look.{% endcall %}
+{% call ui.paragraph() %}<span style="font-size:15px;color:{{ colors.muted }};">Our full returns policy: <a href="{{ site_url }}/policies/returns" style="color:{{ colors.accent }};">{{ site_url }}/policies/returns</a></span>{% endcall %}
+{% endblock %}

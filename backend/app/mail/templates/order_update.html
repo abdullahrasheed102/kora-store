@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}{{ update.message }}{% endblock %}
+{% block content %}
+{{ ui.heading(update.headline) }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, {{ update.message }}{% endcall %}
+{% if update.note %}{{ ui.note(update.note) }}{% endif %}
+{{ ui.details([("Order", order.number), ("Carrier", update.carrier), ("Tracking number", update.tracking_number), ("Expected delivery", update.estimated_delivery)]) }}
+{{ ui.button(order.track_url, "See your order") }}
+{% if update.status == "delivered" %}
+{% call ui.paragraph() %}<span style="font-size:15px;color:{{ colors.muted }};">Not the right fit? You can return unworn items within 30 days at <a href="{{ site_url }}/returns" style="color:{{ colors.accent }};">{{ site_url }}/returns</a>.</span>{% endcall %}
+{% endif %}
+{% endblock %}

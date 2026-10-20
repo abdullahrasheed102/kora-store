@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app import models  # noqa: F401  (registers every table on db.metadata for Alembic)
 from app.api import register_blueprints
-from app.commands import images_cli, orders_cli, policies_cli
+from app.commands import email_cli, images_cli, orders_cli, outbox_cli, policies_cli
 from app.config import BaseConfig, config_from_env
 from app.errors import register_error_handlers
 from app.extensions import db, jwt, limiter, migrate
@@ -57,11 +57,13 @@ def create_app(config: BaseConfig | None = None) -> Flask:
     app.cli.add_command(orders_cli)
     app.cli.add_command(images_cli)
     app.cli.add_command(policies_cli)
+    app.cli.add_command(outbox_cli)
+    app.cli.add_command(email_cli)
 
     @app.after_request
     def no_store_for_private_data(response: Response) -> Response:
         # Account data must never be kept by a browser or shared cache.
-        if request.path.startswith(("/api/auth", "/api/account", "/api/orders", "/api/checkout", "/api/sandbox", "/api/admin")):
+        if request.path.startswith(("/api/auth", "/api/account", "/api/orders", "/api/checkout", "/api/sandbox", "/api/admin", "/api/email")):
             response.headers["Cache-Control"] = "no-store"
         return response
 

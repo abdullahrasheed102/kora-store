@@ -2,7 +2,7 @@
 
 from flask import Flask
 
-from app.api import admin, agent, auth, cart, checkout, health, newsletter, orders, products
+from app.api import admin, agent, auth, cart, checkout, email, health, newsletter, orders, products
 
 BLUEPRINTS = (
     health.bp,
@@ -12,6 +12,7 @@ BLUEPRINTS = (
     checkout.bp,
     orders.bp,
     newsletter.bp,
+    email.bp,
     admin.bp,
     agent.bp,
 )

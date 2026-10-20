@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import notifications
 from app.models import Order, SupportTicket, TicketPriority, TicketSource, normalize_email
 from app.returns import normalize_order_number
 
@@ -33,5 +34,7 @@ def create_ticket(
         priority=priority, source=source,
     )
     session.add(ticket)
+    session.flush()  # gives the ticket its id, which the alert email shows
+    notifications.ticket_created(session, ticket)
     session.commit()
     return ticket

@@ -3,7 +3,7 @@
 This page shows the whole Kora Outfitters system on one page: what the parts are, and how a request moves
 between them. It is updated after every phase.
 
-**Status:** Phases 0–7 are built: the backend skeleton, the database, the catalog and storefront, cart and accounts, payments (sandbox by default, Stripe optional), order tracking and returns, the admin dashboard, and the production deployment setup (Render + Vercel + Neon, see [DEPLOY.md](../DEPLOY.md)). Next: the AI agent (8). Everything marked *planned* comes in a later phase.
+**Status:** Phases 0–7 are built: the backend skeleton, the database, the catalog and storefront, cart and accounts, payments (sandbox by default, Stripe optional), order tracking and returns, the admin dashboard, the production deployment setup (Render + Vercel + Neon, see [DEPLOY.md](../DEPLOY.md)), and step **8A** of phase 8: automatic emails through an outbox, with email verification and abuse limits. Next: 8B, the agent core ([AI_PLAN.md](AI_PLAN.md)). Everything marked *planned* comes in a later step.
 
 ## The parts
 
@@ -15,7 +15,10 @@ between them. It is updated after every phase.
 | Postgres database | Stores products, orders, users, policies | Neon (prod, pooled + TLS), Docker (local) | ✅ |
 | Scheduled job | Cancels never-paid orders every hour (`flask orders expire-unpaid`) | GitHub Actions | ✅ |
 | Payment provider | Takes payment, then tells our backend with a signed **webhook**. `PAYMENT_PROVIDER=sandbox` (our own fake provider, the default, because Stripe isn't available in Pakistan) or `stripe` (test mode) | Our backend / Stripe | ✅ |
-| AI support agent (`agent/`) | A LangGraph program that answers customer questions by calling `/api/agent/*` | Render | *planned (Phase 8)* |
+| Email outbox | The `email_outbox` table: every email is written in the same transaction as the change that causes it, sent right after the commit, and retried by a job | Flask + Postgres | ✅ (8A) |
+| Email provider | `EMAIL_PROVIDER`: **Resend** (HTTP API) in production, **Mailpit** (a fake inbox in Docker, http://localhost:8025) locally, `log` in tests | Resend's cloud / Docker | ✅ (8A) |
+| Email retry job | Calls `POST /api/email/outbox/process` every 5 minutes (`.github/workflows/email-outbox.yml`) | GitHub Actions | ✅ (8A) |
+| AI assistants (Kora Support + Kora Copilot) | LangGraph agents that answer customers and help the admin, by calling the service layer through permission-checked tools. They run **inside** the Flask service (one free Render service), see [AI_PLAN.md](AI_PLAN.md) | Render (in Flask) | *planned (8B–8D)* |
 | Groq / Gemini | Large language models (LLMs) the agent uses | Their clouds | *planned (Phase 8)* |
 
 ## System diagram
@@ -30,11 +33,12 @@ flowchart LR
 
     subgraph Render
         F[Flask API<br/>blueprints under /api]
-        A[AI agent<br/>LangGraph]:::planned
+        A[AI assistants<br/>LangGraph]:::planned
     end
 
     DB[(Postgres<br/>Neon / Docker)]
-    GH[GitHub Actions<br/>hourly job]
+    GH[GitHub Actions<br/>hourly + every 5 min]
+    R[Resend<br/>email API]
     S[Payment provider<br/>sandbox or Stripe]
     L[Groq + Gemini LLMs]:::planned
 
@@ -42,11 +46,13 @@ flowchart LR
     N -- "rewrite /api/:path*<br/>to BACKEND_URL" --> F
     F -- "SQL via SQLAlchemy<br/>(TLS, pooled)" --> DB
     GH -- "expire unpaid orders" --> DB
+    GH -- "POST /api/email/outbox/process" --> F
+    F -- "send after commit (HTTPS)" --> R
     F -- "create checkout session" --> S
     S -- "signed webhook: paid / expired" --> F
     B -- "pays on Stripe's hosted page" --> S
     N -. "chat messages" .-> A
-    A -. "tools: /api/agent/*<br/>X-Agent-Key header" .-> F
+    A -. "tools: service layer<br/>with actor permission checks" .-> F
     A -. "prompts" .-> L
 
     classDef planned stroke-dasharray: 5 5,opacity:0.7
@@ -120,6 +126,8 @@ flowchart TB
     C --> CMD[commands.py<br/>flask orders expire-unpaid]
     BP --> AD[admin ✅ before_request: role check]
     BP --> AG[agent]
+    BP --> EM[email ✅ verify, resend, outbox job]
+    C --> MAIL[mail/ outbox, senders, templates, verification]
 ```
 
 `health`, `products`, `auth` and `cart` are complete; `orders` has the account order history. The rest are filled in phases 4–8.
@@ -135,9 +143,14 @@ Other backend modules:
 | `app/payments/` | `PaymentProvider` interface + `StripeProvider` and `SandboxProvider` adapters (Phase 4) |
 | `app/sandbox.py` | The sandbox's hosted payment page: session data, test cards, signed self-webhook (Phase 4) |
 | `app/checkout.py` | Create pending orders, handle webhooks (idempotent, row locks), expire unpaid orders (Phase 4) |
-| `app/commands.py` | `flask orders expire-unpaid` (Phase 4) |
+| `app/commands.py` | `flask orders expire-unpaid` (Phase 4), `flask outbox process`, `flask email preview` (8A) |
 | `app/admin.py` | Admin operations: products and stock deltas, order and return state machines, tickets, policies, stats (Phase 6) |
 | `app/support.py` | Support tickets (contact form now, agent in Phase 8) |
+| `app/notifications.py` | **What** to email and **when**: order placed, status changes, cancellation, returns, refunds, ticket alerts. Each function only adds an outbox row to the caller's transaction (8A). The Copilot (8D) calls the same functions |
+| `app/mail/outbox.py` | The outbox: `enqueue()` (INSERT … ON CONFLICT DO NOTHING), send after commit (a session hook), claim with leases, daily caps, retries with backoff (8A) |
+| `app/mail/senders.py` | `log`, `mailpit` (SMTP) and `resend` (HTTP API with an Idempotency-Key) providers (8A) |
+| `app/mail/render.py` + `templates/` | Jinja templates: branded HTML + plain text for every email (8A) |
+| `app/mail/verification.py` | Signed "confirm your email" links (itsdangerous) and the verified-address list (8A) |
 | `app/returns.py` | Guest order lookup without leaks, tracking view, the returns policy as 9 tested rules (Phase 5). Reused by the agent in Phase 8. |
 | `app/accounts.py` | Signup/login rules, addresses, a user's own orders. Every query is scoped to `user_id` (Phase 3) |
 | `app/pricing.py` | Shipping rules and `quote_cart()`. Shared by the seed, the cart and checkout. |
@@ -161,6 +174,14 @@ erDiagram
     orders ||--|{ order_events : "timeline"
     orders ||--o{ return_requests : "may have"
     orders |o--o{ support_tickets : "may be about"
+    orders |o--o{ email_outbox : "emails about"
+    email_outbox {
+        string idempotency_key UK
+        string status "pending, sending, sent, failed, suppressed"
+    }
+    verified_emails {
+        string email PK "proved by a link"
+    }
     policies {
         string key UK "shipping, returns..."
     }
@@ -219,6 +240,9 @@ stateDiagram-v2
 | `POST /api/returns/eligibility` | Which items can be returned, and why not (guest: + email; logged in: own orders) | 5 |
 | `POST /api/returns` | Start a refund or exchange; rules re-checked, order row locked | 5 |
 | `POST /api/support/contact` | Contact form → support ticket (rate limited) | 6 |
+| `POST /api/email/verify` | `{token}` from a "confirm your email" link → the address is verified (and an order's confirmation is sent). Rate limited | 8A |
+| `POST /api/email/resend-verification` | Send the account's verification link again 🔒 (3/hour) | 8A |
+| `POST /api/email/outbox/process` | The retry job. `Authorization: Bearer OUTBOX_CRON_SECRET`; 404 when no secret is configured | 8A |
 | `/api/admin/*` (16 routes, incl. `POST /api/admin/orders/<n>/cash-collected`) | Stats, products (incl. `tags`), variants, orders, returns, tickets, policies (incl. `summary`). 🛡 admin role on every route | 6 |
 
 🔒 = needs a login cookie; writes also need the `X-CSRF-TOKEN` header.
@@ -244,6 +268,34 @@ Content-Type: application/json
 
 Emails are stored trimmed and lowercase in `newsletter_subscribers` (UNIQUE email). The insert is
 `INSERT … ON CONFLICT (email) DO NOTHING`, so two requests at the same moment can't create two rows.
+
+## Email notifications (the outbox)
+
+```mermaid
+sequenceDiagram
+    participant A as Admin (browser)
+    participant F as Flask
+    participant DB as Postgres
+    participant R as Resend
+    participant G as GitHub Actions
+    A->>F: POST /api/admin/orders/KO-1013/status {shipped}
+    F->>DB: BEGIN · UPDATE orders · INSERT order_events · INSERT email_outbox (pending)
+    F->>DB: COMMIT (all three, or none)
+    F-->>A: 200 (the admin doesn't wait for the email)
+    F->>DB: background thread: claim row (status=sending, 2-min lease) · COMMIT
+    F->>R: POST /emails (Idempotency-Key = row's key)
+    alt accepted
+        F->>DB: status = sent
+    else failed
+        F->>DB: status = pending, next_attempt_at = later
+        G->>F: every 5 min: POST /api/email/outbox/process
+        F->>R: retry (same Idempotency-Key, so never a duplicate)
+    end
+```
+
+Customer emails go only to **verified** addresses (a sign-up link, or a one-time "confirm your email" step
+after a guest order), never to reserved domains (`example.com`, `kora.test`, …), and within per-recipient and
+global daily caps. Details: [guide/08a-email-notifications.md](guide/08a-email-notifications.md).
 
 ## Sessions and security layers
 

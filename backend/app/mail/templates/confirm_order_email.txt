@@ -1,0 +1,15 @@
+{% extends "base.txt" %}
+{% block content %}
+Is this your email?
+
+Order {{ order_number }} was just placed at Kora Outfitters with this email address.
+
+Confirm it's yours and we'll send your order confirmation, then an email when your order ships and when it arrives:
+
+{{ verify_url }}
+
+You can always check your order at {{ site_url }}/track?order={{ order_number }}, even without confirming.
+{% endblock %}
+{% block footer_note %}
+Didn't place this order? Ignore this email. We won't email you about it again.
+{% endblock %}

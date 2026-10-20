@@ -1,0 +1,16 @@
+{% extends "base.txt" %}
+{% block content %}
+Your refund is on its way
+
+Hi {{ order.first_name }}, your returned items for order {{ order.number }} arrived at our warehouse, and we've issued your refund.
+
+Amount: {{ refund.amount }}
+Refunded: {{ refund.how }}
+For: {{ ret.lines | join(", ") }}
+
+{{ refund.detail }}
+{% if note %}
+
+{{ note }}
+{% endif %}
+{% endblock %}

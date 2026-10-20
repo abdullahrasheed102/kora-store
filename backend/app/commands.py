@@ -1,4 +1,5 @@
-"""Maintenance commands: `flask orders expire-unpaid`, `flask images sync|check` and `flask policies sync`."""
+"""Maintenance commands: `flask orders expire-unpaid`, `flask images sync|check`, `flask policies sync`,
+`flask outbox process` and `flask email preview`."""
 
 from datetime import timedelta
 from pathlib import Path
@@ -9,6 +10,8 @@ from flask.cli import AppGroup
 from app.checkout import expire_unpaid_orders
 from app.extensions import db
 from app.images import MANIFEST_PATH, format_report, load_manifest, sync_images
+from app.mail import outbox
+from app.mail.preview import PREVIEWS, write_preview
 from app.policies import POLICIES_PATH, load_policy_seed, sync_policies
 
 orders_cli = AppGroup("orders", help="Order maintenance.")
@@ -76,3 +79,40 @@ def policies_sync(path: Path) -> None:
     changes nothing. Admin edits are kept until a higher version is shipped.
     """
     click.echo(str(sync_policies(db.session, load_policy_seed(path))))
+
+
+outbox_cli = AppGroup("outbox", help="The email outbox.")
+
+
+@outbox_cli.command("process")
+def outbox_process() -> None:
+    """Send every due email now: the same job GitHub Actions runs every 5 minutes.
+
+    Retries failed sends whose wait is over, and takes over rows stuck in "sending" after a crash.
+    """
+    result = outbox.run_scheduled(db.session, force=True)
+    click.echo(", ".join(f"{name}: {value}" for name, value in result.items() if name != "skipped"))
+
+
+email_cli = AppGroup("email", help="Email templates.")
+
+
+@email_cli.command("preview")
+@click.argument("name", type=click.Choice(["all", *PREVIEWS]))
+@click.option(
+    "--out",
+    "out_dir",
+    type=click.Path(file_okay=False, path_type=Path),
+    default=Path("email-previews"),
+    show_default=True,
+    help="Folder for the .html and .txt files (git-ignored).",
+)
+def email_preview(name: str, out_dir: Path) -> None:
+    """Render an email with sample data to an HTML file you can open in a browser. Sends nothing.
+
+    NAME is a template (with variants, e.g. order_update_delayed), or "all".
+    """
+    for preview in PREVIEWS if name == "all" else [name]:
+        path = write_preview(preview, out_dir)
+        click.echo(f"{path.resolve()}")
+    click.echo("Open one with:  xdg-open <file>")

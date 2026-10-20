@@ -1,0 +1,26 @@
+{% extends "base.txt" %}
+{% import "_macros.txt" as ui %}
+{% block content %}
+{{ "Part of your order has shipped" if partial else "Your order is on its way" }}
+
+Good news, {{ order.first_name }}: {{ "some of the items in " if partial else "" }}order {{ order.number }} {{ "have" if partial else "has" }} left our warehouse.{% if partial %} We'll email you again when the rest ships.{% endif %}
+
+
+Carrier: {{ shipment.carrier }}
+Tracking number: {{ shipment.tracking_number }}
+{% if shipment.estimated_delivery %}
+Expected delivery: {{ shipment.estimated_delivery }}
+{% endif %}
+{% if shipment.note %}
+
+{{ shipment.note }}
+{% endif %}
+{% if order.is_cod %}
+
+Cash on delivery: please have {{ order.total }} ready for the courier.
+{% endif %}
+
+Track your parcel: {{ order.track_url }}
+
+{{ ui.order_summary(order) }}
+{% endblock %}

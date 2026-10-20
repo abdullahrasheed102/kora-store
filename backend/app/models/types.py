@@ -107,6 +107,16 @@ class TicketSource(StrEnum):
     CONTACT_FORM = "contact_form"
 
 
+class EmailStatus(StrEnum):
+    """Where an outbox email is in its life. Only `pending` and `sending` rows are ever picked up."""
+
+    PENDING = "pending"  # waiting to be sent (first try, or a retry after next_attempt_at)
+    SENDING = "sending"  # claimed by a sender; if it crashes, the lease (locked_until) runs out
+    SENT = "sent"  # the provider accepted it
+    FAILED = "failed"  # gave up: a permanent error, or too many attempts
+    SUPPRESSED = "suppressed"  # deliberately not sent (blocked domain, unverified, daily cap)
+
+
 def enum_column(enum_cls: type[StrEnum], name: str) -> Enum:
     """Store an enum as VARCHAR + CHECK constraint, not as a native Postgres ENUM type.
 

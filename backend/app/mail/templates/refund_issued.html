@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}{{ refund.amount }} for order {{ order.number }}.{% endblock %}
+{% block content %}
+{{ ui.heading("Your refund is on its way") }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, your returned items for order <strong>{{ order.number }}</strong> arrived at our warehouse, and we've issued your refund.{% endcall %}
+{{ ui.details([("Amount", refund.amount), ("Refunded", refund.how), ("For", ret.lines | join(", "))]) }}
+{% call ui.paragraph() %}{{ refund.detail }}{% endcall %}
+{% if note %}{{ ui.note(note) }}{% endif %}
+{% endblock %}

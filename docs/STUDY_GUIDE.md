@@ -28,6 +28,7 @@ of terms is in [GLOSSARY.md](GLOSSARY.md). The detailed guide for each phase is 
   - [The image pipeline](#the-image-pipeline)
   - [The homepage: tags, animation and the newsletter](#the-homepage-tags-animation-and-the-newsletter)
   - [Phase 7 — Deployment](#phase-7--deployment)
+  - [Phase 8A — Email notifications (the outbox)](#phase-8a--email-notifications-the-outbox)
 - [Part 4 — Interview questions](#part-4--interview-questions)
 - [Part 5 — Cheat sheet](#part-5--cheat-sheet)
 
@@ -955,6 +956,82 @@ scheduled job. Everything runs on free plans.
 
 ---
 
+### Phase 8A — Email notifications (the outbox)
+
+**What we built and why.** Phase 8 adds two AI assistants (see [AI_PLAN.md](AI_PLAN.md)). Both need to email people,
+so step 8A builds the email system first, with no AI in it. When an order is placed, shipped, delayed, delivered,
+cancelled, returned or refunded, the customer gets an email. When a support ticket is created, the store owner gets
+one. The goal: every email is sent **exactly once**, and **never** for a change that didn't happen. Full guide:
+[guide/08a-email-notifications.md](guide/08a-email-notifications.md).
+
+**Concepts**
+
+- **The dual-write problem.** Changing the database *and* calling an outside service (the email provider) are two
+  writes that no transaction can join. Send first, and a failed commit means we emailed about nothing. Commit first,
+  and a crash before sending loses the email.
+- **The transactional outbox pattern.** Don't send inside the transaction. Insert a row ("this email must be sent")
+  into `email_outbox` **in the same transaction** as the change. Both are saved, or neither. Then deliver the rows
+  after the commit, and keep retrying until it works. In our code:
+  - `enqueue()` writes the row (`backend/app/mail/outbox.py`).
+  - A SQLAlchemy **`after_commit` hook** sends new rows in a background thread, so nobody waits for the provider.
+  - An **`after_rollback` hook** forgets them. A rolled-back change can't send an email.
+  - **GitHub Actions** calls `POST /api/email/outbox/process` every 5 minutes as the safety net.
+- **Idempotency, in two layers.**
+  1. A unique `idempotency_key` per email (e.g. `order-confirmation:42`) with `INSERT … ON CONFLICT DO NOTHING`. A
+     retried webhook or a double click inserts nothing the second time.
+  2. The same key goes to Resend in the `Idempotency-Key` header, which covers "Resend accepted it, then we crashed".
+- **Claiming with leases.** A sender marks rows `sending` with a 2-minute lease, **commits**, and only then calls the
+  network (never hold locks during a network call). If it dies, the lease expires and the next run takes over.
+  `FOR UPDATE SKIP LOCKED` keeps two senders on different rows.
+- **Backoff and giving up.** Temporary errors (network, 429, 5xx) retry after 1, 5, 15, 60, then 240 minutes. A
+  permanent error (most other 4xx), or the 6th failure, marks the row `failed`.
+- **Abuse protection.** Anyone can type any address on a public demo:
+  - customer emails go only to **verified** addresses (a sign-up link, or a one-time "is this your email?" message
+    after a guest order, which contains no order details)
+  - reserved domains (`example.com`, `kora.test`, `.test`, `.invalid`…) are never emailed, which covers all seed data
+  - daily caps: per recipient (over → dropped) and global (over → postponed to tomorrow)
+- **Signed tokens.** Verification links carry data signed with `SECRET_KEY` by `itsdangerous`, with a salt and a
+  7-day expiry. They check themselves, so there's no token table.
+- **Providers (adapter pattern again).** `EMAIL_PROVIDER` = `resend` (production, HTTPS API: Render's free plan
+  blocks SMTP ports), `mailpit` (local fake inbox at http://localhost:8025) or `log` (tests).
+- **Deliverability.** **SPF** (which servers may send for the domain), **DKIM** (a signature on each email, with the
+  public key in DNS) and **DMARC** (what to do when those fail) are DNS records that make Gmail trust our mail. We
+  send from a subdomain so the demo can't hurt the main domain's reputation.
+- **Email HTML.** Tables and inline styles (email apps aren't browsers), a plain-text version of every email,
+  autoescaping, and one-line subjects (no header injection).
+
+**Real problems we hit**
+1. **A resent verification email silently vanished.** The idempotency key for "send the link again" used the time
+   in *seconds*, so a sign-up and a resend in the same second had the same key, and `ON CONFLICT DO NOTHING`
+   dropped the second one. The test caught it. *Fix:* a random part in the key. *Lesson:* an idempotency key must
+   name *the thing that should happen once*. Two different requests need two different keys.
+2. **Retry times drifted.** The next attempt was computed from the wall clock, not from when the attempt started,
+   so the schedule moved. *Fix:* `next_attempt_at = last_attempt_at + delay`.
+3. **A 5-minute job would keep Neon awake.** A query every 5 minutes means the database never sleeps. *Fix:* an
+   in-memory "maybe something is due" flag. It's `True` after any new email and after every restart, so the job only
+   queries when it must.
+4. **Mail scanners open links.** If opening the verification link confirmed the address, a company's virus scanner
+   would confirm it, not the person. *Fix:* the link opens a page, and a **button** sends the `POST`.
+5. **Autogenerate wrote the status CHECK twice** (again, as in phase 4). We removed both copies: the `Enum` column
+   already creates the constraint.
+
+**Files to look at:** `backend/app/mail/outbox.py`, `backend/app/mail/senders.py`, `backend/app/mail/verification.py`,
+`backend/app/mail/templates/`, `backend/app/notifications.py`, `backend/app/api/email.py`, the `notifications.*`
+calls in `app/checkout.py`, `app/admin.py` and `app/support.py`, `.github/workflows/email-outbox.yml`,
+`backend/docker-compose.yml` (Mailpit), DEPLOY.md step 9.
+
+**Explain it in 60 seconds**
+> "The store emails customers when their order changes. The hard part is reliability. If you send inside the request,
+> a failed commit means you emailed about something that never happened. If you commit and then send, a crash loses
+> the email. So I used the transactional outbox pattern: the email is a row written in the same transaction as the
+> order change. A SQLAlchemy after-commit hook sends it in a background thread, and a GitHub Actions job retries
+> failures every 5 minutes with backoff and leases. Duplicates are blocked twice: a unique idempotency key in my table
+> and the same key on Resend's API. Because it's a public demo, customer emails only go to verified addresses, never
+> to reserved domains, under daily caps. Production uses Resend over HTTPS because Render blocks SMTP, with SPF and
+> DKIM on a subdomain. Locally everything lands in Mailpit."
+
+---
+
 ## Part 4 — Interview questions
 
 Each question has a **model answer** in plain spoken English, and one likely **follow-up** with its answer. Don't
@@ -1487,11 +1564,45 @@ touch what they own and are safe to run on every deploy."
 
 ---
 
+### K. Email and reliability (phase 8A)
+
+**K1. How do you make sure an order email is never lost and never sent for a change that failed?**
+"The transactional outbox pattern. The email is written as a row in `email_outbox` in the same database transaction
+as the order change, so both are saved or neither is. A SQLAlchemy after-commit hook sends it straight after, in a
+background thread, and an after-rollback hook throws it away. If sending fails, the row is still pending, and a job
+every 5 minutes retries it."
+- *Follow-up: Why not a message queue like RabbitMQ or SQS?* "Publishing to a queue after a commit is the same dual
+  write. You'd still need an outbox to do it safely. Postgres is already transactional and already there, and at our
+  volume one table is plenty."
+
+**K2. What stops a customer getting the same email twice?**
+"Two idempotency layers. A unique key per email, like `order-confirmation:42`, inserted with `ON CONFLICT DO NOTHING`,
+so a retried webhook or double click adds nothing. And the same key goes to Resend as its Idempotency-Key header, so a
+retry after 'Resend accepted it, then we crashed' isn't delivered twice."
+- *Follow-up: Give an example where choosing the key went wrong.* "The 'resend verification link' key used the time
+  in seconds, so two requests in the same second shared a key and the second email silently disappeared. A test caught
+  it. Now the key has a random part, because each resend is a new thing that should happen once."
+
+**K3. Your demo store lets anyone type any email. How do you stop it being used to spam people?**
+"Customer emails only go to verified addresses. Sign-up sends a signed link. A guest order first gets one minimal
+'is this your email?' message with no order details. Reserved domains like `example.com` are never emailed. And there
+are daily caps: per recipient, where extra emails are dropped, and global, where they wait for tomorrow."
+- *Follow-up: Why does the confirmation page need a button?* "Mail scanners open every link in an email. If opening
+  the link confirmed the address, the scanner would confirm it. A button sending a POST is something only a person does."
+
+**K4. What are SPF, DKIM and DMARC?**
+"DNS records that let Gmail check an email really comes from our domain. SPF lists the servers allowed to send. DKIM
+is a signature on each email, with the public key in DNS. DMARC says what to do when those checks fail. Without them,
+mail goes to spam. I send from a subdomain so the demo can't hurt my main domain's reputation."
+- *Follow-up: Why Resend's HTTP API and not SMTP?* "Render's free plan blocks SMTP ports. HTTP also gives clear status
+  codes, so I can decide what to retry (429 and 5xx) and what not to (most other 4xx)."
+
 ## Part 5 — Cheat sheet
 
 **The stack:** Next.js 16 + React 19 + Tailwind 4 on **Vercel** (`iad1`) · Flask 3 + SQLAlchemy 2 + Alembic + Pydantic 2
 + gunicorn on **Render** (Virginia) · Postgres 17 on **Neon** (US East, pooled, TLS) · domain
-`kora.abdullahrasheed.tech` (CNAME → Vercel) · hourly job on **GitHub Actions** · Phase 8 agent: LangGraph, Groq, Gemini.
+`kora.abdullahrasheed.tech` (CNAME → Vercel) · hourly + 5-minute jobs on **GitHub Actions** · email: **Resend** (Mailpit
+locally) · Phase 8 assistants: LangGraph, Groq, Gemini.
 
 **The path of every request:** Browser → Vercel (CDN + Next.js) → `/api` rewrite → Render (gunicorn → Flask) → Neon.
 The browser talks to one domain only: first-party cookies, no CORS.
@@ -1501,7 +1612,7 @@ The browser talks to one domain only: first-party cookies, no CORS.
 | | |
 |---|---|
 | Catalog | 20 products · 217 variants · 65 product photos · 12 seeded orders · 5 policies |
-| Tests | 345 backend (real Postgres) · 22 frontend unit tests · 46 API endpoints |
+| Tests | 427 backend (real Postgres) · 22 frontend unit tests · 49 API endpoints |
 | Shipping | Free over $75 · standard $6.95 (3–6 days) · express $14.95 (2 days) · international $19.95 (7–14 days) |
 | Returns | 30 days from delivery · refunds in 5–7 business days · COD refunds by bank transfer or store credit |
 | Session | JWT in httpOnly + Secure + SameSite=Lax cookie · 7 days · argon2id · passwords 10–128 characters |
@@ -1509,6 +1620,7 @@ The browser talks to one domain only: first-party cookies, no CORS.
 | Webhooks | HMAC-SHA256 over `"<t>.<body>"` · 5-minute window · `compare_digest` · checkout session expires after 30 min · expiry job hourly for orders older than 60 min |
 | Production | gunicorn 1 worker × 4 threads, 30 s timeout · Render sleeps after 15 min (≈1 min to wake) · Neon sleeps after 5 min (≈1 s) · `pool_recycle` 300 s · secrets ≥ 32 characters |
 | Images | 23 MB → 1.2 MB (first 7 site photos) · 4:5 product photos, padded not cropped · WebP quality 80, max 1200 px (hero 2400) |
+| Email (8A) | 10 email types, HTML + text · retries after 1, 5, 15, 60, 240 min, max 6 attempts · 2-min lease · caps 80/day overall, 10/day per recipient · verification links expire in 7 days · resend link 3/h |
 | Homepage (local Lighthouse, median of 3) | Mobile 90, desktop 74 · layout shift 0 · Motion ≈ 33 KB gzipped |
 
 **Ten decisions to remember**
@@ -1527,6 +1639,8 @@ The browser talks to one domain only: first-party cookies, no CORS.
    (by URL).
 10. **Free-tier workarounds:** migrations in `start.sh`, seed from the laptop, GitHub Actions for cron, liveness
     health check so Neon can sleep, fail-fast production config.
+11. **Emails through a transactional outbox:** written in the same transaction, sent after commit, retried with
+    backoff, idempotent in two layers, and only to verified addresses.
 
 **Real problems to talk about:**
 - Stripe isn't available in Pakistan → sandbox adapter
@@ -1540,13 +1654,16 @@ The browser talks to one domain only: first-party cookies, no CORS.
 - Render's free-plan limits
 - duplicate CHECKs and the missing sequence in autogenerated migrations
 - reduced-motion "jump"
+- the vanished resend email (an idempotency key that wasn't unique enough)
+- keeping Neon asleep despite a 5-minute job
 
 **Terms to be able to define in one sentence:** app factory, blueprint, ORM, migration, REST, pagination, N+1, Pydantic,
 argon2id, JWT, httpOnly, SameSite, CSRF, XSS, enumeration, rate limiting, ProxyFix, integer cents, snapshot, sequence,
 constraint, transaction, row lock, deadlock, race condition, webhook, HMAC, replay attack, idempotency, adapter pattern,
 state machine, RBAC, audit trail, WebP, `srcset`/`sizes`, LCP, lazy loading, upsert, dry run, manifest, GIN index,
 WSGI, gunicorn, cold start, connection pool, PgBouncer, TLS, liveness/readiness, CSP, HSTS, reverse proxy, CDN, DNS,
-CNAME, environment variable, fail fast, COD.
+CNAME, environment variable, fail fast, COD, outbox pattern, dual write, at-least-once, lease, backoff, advisory lock,
+SPF, DKIM, DMARC, deliverability, SMTP, signed token.
 
 **The honest AI answer:** "I designed and directed it, Claude Code wrote the code, I reviewed and tested it, and I can
 explain every part."

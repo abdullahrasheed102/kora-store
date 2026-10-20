@@ -1,0 +1,20 @@
+{% extends "base.txt" %}
+{% block content %}
+New support ticket #{{ ticket.id }}
+
+Subject: {{ ticket.subject }}
+From: {{ ticket.name }} <{{ ticket.email }}>
+Priority: {{ ticket.priority | capitalize }}
+Source: {{ ticket.source }}
+{% if ticket.order_number %}
+Order: {{ ticket.order_number }}
+{% endif %}
+
+SUMMARY
+{{ ticket.summary }}
+
+Open the ticket queue: {{ ticket.admin_url }}
+{% endblock %}
+{% block footer_note %}
+You're getting this because this address is set as ADMIN_NOTIFY_EMAIL. Reply to this email to answer {{ ticket.name }} directly.
+{% endblock %}

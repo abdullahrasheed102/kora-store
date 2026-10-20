@@ -1,0 +1,13 @@
+{% extends "base.txt" %}
+{% block content %}
+Confirm your email
+
+Hi {{ name }}, welcome to Kora Outfitters. Please confirm this is your email address, so we can send you order updates:
+
+{{ verify_url }}
+
+The link works for 7 days.
+{% endblock %}
+{% block footer_note %}
+You're getting this because someone created a Kora account with this address. If it wasn't you, ignore this email.
+{% endblock %}

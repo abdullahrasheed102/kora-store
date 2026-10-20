@@ -41,6 +41,7 @@ def user_dict(user: User) -> dict[str, Any]:
         "email": user.email,
         "name": user.name,
         "role": user.role.value,
+        "email_verified": user.email_verified,
         "created_at": user.created_at.isoformat(),
     }
 

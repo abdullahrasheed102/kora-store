@@ -16,7 +16,7 @@ from sqlalchemy import Select, case, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app import payments
+from app import notifications, payments
 from app.accounts import order_detail
 from app.catalog import escape_like, size_sort_key
 from app.errors import APIError
@@ -52,8 +52,10 @@ def _page(session: Session, stmt: Select[Any], page: int) -> tuple[list[Any], di
     return rows, {"page": page, "per_page": PER_PAGE, "total": total, "total_pages": math.ceil(total / PER_PAGE)}
 
 
-def _event(order: Order, note: str, status: OrderStatus | None = None) -> None:
-    order.events.append(OrderEvent(status=status or order.status, note=note, created_by=EventActor.ADMIN))
+def _event(order: Order, note: str, status: OrderStatus | None = None) -> OrderEvent:
+    event = OrderEvent(status=status or order.status, note=note, created_by=EventActor.ADMIN)
+    order.events.append(event)
+    return event
 
 
 # --- products and stock -------------------------------------------------------------------------
@@ -374,7 +376,8 @@ def change_order_status(session: Session, order_number: str, body: OrderStatusUp
         order.delivered_at = now  # starts the 30-day return window
 
     refund_after_commit = False
-    if target is OrderStatus.CANCELLED and order.status is OrderStatus.PROCESSING:
+    cancelling_confirmed_order = target is OrderStatus.CANCELLED and order.status is OrderStatus.PROCESSING
+    if cancelling_confirmed_order:
         # Stock was already taken (card: when paid; cash on delivery: when placed). Put it back.
         _restock(session, [(item.variant_id, item.quantity) for item in order.items])
         # Card: refund the payment. COD: the courier never collected anything, so nothing to refund.
@@ -383,7 +386,15 @@ def change_order_status(session: Session, order_number: str, body: OrderStatusUp
     previous = order.status
     order.status = target
     order.status_note = body.note
-    _event(order, body.note or f"Status changed from {previous.value} to {target.value}.", target)
+    event = _event(order, body.note or f"Status changed from {previous.value} to {target.value}.", target)
+    session.flush()  # the event id is part of the email's idempotency key
+    # The customer email is written in this same transaction (app/mail/outbox.py). Cancelling an
+    # unpaid checkout sends nothing: the shopper never finished paying.
+    if cancelling_confirmed_order:
+        refund_cents = order.total_cents if refund_after_commit else 0
+        notifications.order_cancelled(session, order, refund_cents=refund_cents, note=body.note)
+    else:
+        notifications.order_status_changed(session, order, event)
     session.commit()
 
     if refund_after_commit:  # never hold row locks during a network call (same rule as webhooks)
@@ -529,6 +540,7 @@ def change_return_status(session: Session, return_id: int, body: ReturnStatusUpd
                    f"(was {previous.value}).", OrderStatus.RETURNED)
         else:
             _event(order, body.note or f"Refunded {amount / 100:.2f} USD {how} for {names}.")
+        notifications.refund_issued(session, request, amount, body.note)
         session.commit()
         if not is_cod:
             _refund(session, order, amount, f"refund-return-{request.id}")
@@ -536,6 +548,10 @@ def change_return_status(session: Session, return_id: int, body: ReturnStatusUpd
     else:
         verb = {ReturnStatus.APPROVED: "approved", ReturnStatus.LABEL_SENT: "label sent", ReturnStatus.REJECTED: "rejected"}
         _event(order, f"Return {verb[target]}: {names}." + (f" {body.note}" if body.note else ""))
+        if target is ReturnStatus.APPROVED:
+            notifications.return_approved(session, request, body.note)
+        elif target is ReturnStatus.REJECTED:
+            notifications.return_rejected(session, request, body.note or "")
     session.commit()
     return request
 

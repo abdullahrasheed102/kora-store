@@ -55,7 +55,7 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 
 ## Architecture rules
 - The browser only ever calls the frontend's own origin. `frontend/next.config` rewrites `/api/:path*` to the Flask backend (`BACKEND_URL`). This keeps auth cookies first-party and avoids CORS problems between vercel.app and onrender.com.
-- All Flask routes live under `/api`. Use blueprints: `auth`, `products`, `cart` (validation/pricing only), `checkout`, `orders`, `admin`, `agent`, `health`.
+- All Flask routes live under `/api`. Use blueprints: `auth`, `products`, `cart` (validation/pricing only), `checkout`, `orders`, `admin`, `agent`, `email`, `health`.
 - Auth: session token in an httpOnly, Secure, SameSite=Lax cookie (Flask-JWT-Extended with cookies, CSRF protection on). Passwords hashed with argon2 or bcrypt.
 - Money is always stored and computed as integer cents. The backend recalculates every price and total; never trust prices sent by the client.
 - Stock is decremented only when Stripe confirms payment (webhook), inside a transaction with row locks.
@@ -82,6 +82,7 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 Order dates are relative (`created_days_ago`, `delivered_days_ago`, `estimated_delivery_in_days`) — the seed script converts them to real dates at seed time so the demo never goes stale. Run `flask seed --reset` to rebuild demo data. Demo orders are guest orders (no user account) using the emails in the file.
 
 ## Commands (keep these working)
-- Backend: `cd backend && flask db upgrade && flask seed --reset && flask run` · tests: `pytest` · after adding photos: `flask images sync`
+- Backend: `cd backend && docker compose up -d && flask db upgrade && flask seed --reset && flask run` · tests: `pytest` · after adding photos: `flask images sync`
+- Email: local inbox (Mailpit) at http://localhost:8025 · retry job by hand: `flask outbox process` · see a template: `flask email preview <name|all>`. Customer emails are written to `email_outbox` in the same transaction as the change (`app/notifications.py`), never sent inside it.
 - Frontend: `cd frontend && npm run dev` · checks: `npm test && npm run lint && npm run build`
 - Production: Render runs `backend/start.sh` (migrations → policy sync → image sync → gunicorn, settings in `render.yaml` and `backend/gunicorn.conf.py`); Vercel builds `frontend/`. Steps in `DEPLOY.md`. Never run `flask seed --reset` against Neon.

@@ -25,6 +25,10 @@ implement every `@abstractmethod`, or they can't be created. *Here:* `PaymentPro
 **Adapter pattern** — A class that translates between the interface your code expects and the one another system
 offers. *Here:* `StripeProvider` and `SandboxProvider`.
 
+**Advisory lock** — A Postgres lock on a number you choose, not on a table row. Two transactions asking for the same
+number take turns. *Here:* `pg_advisory_xact_lock(80801)` makes "count today's emails, then claim more" safe when two
+senders run at once (`backend/app/mail/outbox.py`).
+
 **Aggregate query** — SQL that summarises many rows into a few numbers (`SUM`, `COUNT`, `GROUP BY`). *Here:* the
 admin dashboard stats.
 
@@ -43,6 +47,10 @@ import time. Makes testing easy. *Here:* `create_app()` in `backend/app/__init__
 **argon2 (argon2id)** — A password hashing algorithm designed to be slow and memory-hungry, so stolen hashes are hard
 to crack. *Here:* `backend/app/security.py`.
 
+**At-least-once delivery** — A promise that a message is delivered one or more times, never zero. Retries can cause
+duplicates, so the receiver must be **idempotent**. *Here:* the email outbox, made effectively exactly-once by
+idempotency keys.
+
 **Audit trail** — A permanent record of who changed what and when. *Here:* `order_events` with `created_by`.
 
 **Authentication** — Checking who someone is (login). *Here:* `/api/auth/login`.
@@ -52,6 +60,9 @@ roles come in Phase 6.
 
 **Autogenerate (Alembic)** — Alembic compares your models with the database and writes a draft migration. Always read
 it before running. *Here:* `flask db migrate`.
+
+**Backoff (exponential backoff)** — Waiting longer after each failed attempt (1, 5, 15, 60, 240 minutes), so a
+struggling service gets time to recover. *Here:* `RETRY_DELAYS` in `backend/app/mail/outbox.py`.
 
 **before_request (Flask)** — A function that runs before every request; on a blueprint, before every route in it.
 *Here:* the admin role check.
@@ -132,8 +143,19 @@ order.
 **deduct_when (Flask-Limiter)** — An option that decides which responses count toward a rate limit. *Here:* only 404s
 count for order lookups.
 
+**Deliverability** — How likely an email is to reach the inbox instead of spam. It depends on SPF/DKIM/DMARC, the
+sending domain's reputation, a plain-text version, and few bounces or complaints. *Here:* we send from the subdomain
+`kora.abdullahrasheed.tech` (DEPLOY.md, step 9).
+
 **Delta (stock)** — A change (+10, −1) applied to the current value, instead of a new total. *Here:* admin stock
 adjustments.
+
+**DKIM (DomainKeys Identified Mail)** — The sending server signs each email with a private key. The public key is
+published in DNS, so receivers can check the email really came from the domain and wasn't changed. *Here:* the
+`resend._domainkey.kora` TXT record.
+
+**DMARC** — A DNS record that tells receiving mail servers what to do with email that fails SPF and DKIM (`none`,
+`quarantine` or `reject`), and where to send reports. *Here:* `_dmarc.kora` with `p=none`.
 
 **DNS (Domain Name System)** — The internet's phone book: it turns a name like `kora.abdullahrasheed.tech` into a server address.
 
@@ -144,8 +166,16 @@ starts Postgres.
 
 **Dry run** — Running a command to see what it *would* do, without saving any change. *Here:* `flask images check` runs the sync and then rolls back.
 
+**Dual-write problem** — Changing two systems (for example our database and an email provider) where no single
+transaction covers both, so one can succeed while the other fails. *Here:* the reason for the outbox pattern
+(`docs/guide/08a-email-notifications.md`).
+
 **Eager loading** — Loading related rows together with the main query, instead of later one by one. *Here:*
 `selectinload(Product.variants)` in `backend/app/catalog.py`.
+
+**Email verification** — Proving that a person can read mail at an address, by sending a link only that inbox
+receives. *Here:* sign-up links and the guest "confirm your email" step. Customer emails go only to addresses in
+`verified_emails`.
 
 **`.env` file** — A local file of environment variables, loaded automatically by `python-dotenv`. Never committed.
 *Here:* `backend/.env` (copied from `.env.example`).
@@ -190,6 +220,9 @@ later in a confusing way. *Here:* `require_env()` in `config.py`.
 **Hash (password hash)** — A one-way scrambled version of a password. You can check a password against it but can't
 turn it back into the password. *Here:* `users.password_hash`.
 
+**Header injection** — Putting a newline into a value that ends up in an email (or HTTP) header, to add extra headers
+such as `Bcc:`. *Here:* prevented by collapsing every subject to one line in `backend/app/mail/render.py`.
+
 **Health check** — A URL that reports whether the service is working. Hosting platforms call it automatically.
 *Here:* `GET /api/health`.
 
@@ -233,6 +266,9 @@ prevented by filtering on `user_id` in `backend/app/accounts.py`.
 **Interface** — A promise about which methods something has, and their inputs and outputs, without saying how they
 work. *Here:* `PaymentProvider`.
 
+**Jinja** — The template language Flask uses: text with `{{ value }}` and `{% if %}` blocks. In HTML mode it
+**autoescapes** values. *Here:* the email templates in `backend/app/mail/templates/`.
+
 **JSON** — A text format for data, like `{"status": "ok"}`. *Here:* every API response.
 
 **JSONB** — A Postgres column type for JSON, stored in a binary format that can be searched and indexed.
@@ -251,6 +287,9 @@ the session, stored in a cookie.
 **LCP (Largest Contentful Paint)** — How long until the biggest thing on the first screen appears; a Core Web
 Vitals score. *Here:* the homepage hero, which is preloaded.
 
+**Lease** — A claim on a piece of work that expires by itself. If the worker dies, the lease runs out and someone
+else can take the work. *Here:* an outbox row in `sending` belongs to one sender until `locked_until` (2 minutes).
+
 **Least privilege** — Give each user only the access they need.
 
 **Lifestyle photo** — A photo of a product being worn or used in a real setting, as opposed to the product on its own. *Here:* `{product-slug}-lifestyle`, shown on card hover and as the second gallery photo.
@@ -268,6 +307,9 @@ Vitals score. *Here:* the homepage hero, which is preloaded.
 
 **Lost update** — Two transactions read the same value and both write a result; one write is lost. *Here:* the
 oversell bug that row locks prevent.
+
+**Mailpit** — A fake mail server for development. It catches every email and shows it in a web inbox, so nothing
+reaches real people. *Here:* `backend/docker-compose.yml`, inbox at http://localhost:8025.
 
 **Migration** — A versioned script that changes the database structure (adds a table, a column…). *Here:* from
 Phase 1, generated by Alembic.
@@ -305,6 +347,10 @@ in `backend/app/extensions.py`.
 **ORM (Object-Relational Mapper)** — A library that lets you use Python classes instead of writing SQL by hand.
 *Here:* SQLAlchemy.
 
+**Outbox pattern (transactional outbox)** — Writing a message (an email, an event) as a database row in the same
+transaction as the change that causes it, and delivering it after the commit. It solves the **dual-write problem**.
+*Here:* the `email_outbox` table and `backend/app/mail/outbox.py`.
+
 **PaaS (Platform as a Service)** — A host that runs your code from git and manages servers, HTTPS and restarts for you. *Here:* Render (API) and Vercel (website).
 
 **Padding (images)** — Making an image a new shape by adding strips to its sides, instead of cutting parts off (cropping). *Here:* product photos are padded to 4:5 with the colour sampled from each edge.
@@ -339,6 +385,9 @@ and in production.
 
 **Prefetching (Next.js)** — Loading a linked page in the background before the user clicks it. Production only. *Here:*
 why login/logout use a full page load.
+
+**Preheader** — The short preview line an inbox shows next to an email's subject. It's hidden text at the top of the
+HTML email. *Here:* `{% block preheader %}` in each email template.
 
 **preload (next/image)** — Starts downloading an image from the page `<head>`. Use it for the LCP image only. Replaces
 the deprecated `priority` prop in Next.js 16.
@@ -390,6 +439,12 @@ used by the returns page and, later, the AI agent.
 
 **Replay attack** — Re-sending an old genuine message. *Here:* blocked by the 5-minute timestamp check on webhooks.
 
+**Reply-To** — An email header naming where replies should go, when that's different from the sender. *Here:*
+customer emails reply to `ADMIN_NOTIFY_EMAIL`, and ticket alerts reply to the customer.
+
+**Resend** — An email-sending service with an HTTP API (free tier: 100 emails a day). *Here:* the production email
+provider (`ResendSender` in `backend/app/mail/senders.py`).
+
 **REST** — An API style where URLs name resources and HTTP methods say what to do (GET reads).
 
 **Return request** — A customer's request to send items back for a refund or an exchange. *Here:* the
@@ -423,6 +478,9 @@ built because Stripe isn't available in Pakistan; its page is `/pay/sandbox/[ses
 **Self-deadlock** — A worker waiting for a reply that only it could give, so it waits forever. *Here:* why the
 sandbox delivers its webhook in-process.
 
+**Sender reputation** — The history mail providers keep for a sending domain: wanted mail raises it, spam complaints
+and bounces lower it. *Here:* why we send from a separate subdomain.
+
 **Sequence (Postgres)** — A database counter that hands out each number once, even under concurrent requests.
 *Here:* `order_number_seq` for KO-1001, KO-1002…
 
@@ -443,6 +501,10 @@ in the App Router.
 
 **Side channel** — Information leaked by something other than the message: status codes, response size, timing.
 
+**Signed token** — Data plus a cryptographic signature, so the server can later check it made the token and nobody
+changed it, without storing it. *Here:* email verification links made with `itsdangerous`
+(`backend/app/mail/verification.py`).
+
 **sizes / srcset** — `srcset` lists the same image at several widths; `sizes` tells the browser how wide it will be
 on screen, so it can pick the smallest good-enough file.
 
@@ -454,13 +516,23 @@ on screen, so it can pick the smallest good-enough file.
 
 **Slug** — A URL-friendly name: lowercase, with hyphens. *Here:* `everyday-cotton-tee`, `gift-cards`.
 
+**SMTP (Simple Mail Transfer Protocol)** — The standard protocol mail servers use to pass email to each other,
+usually on ports 25, 465 or 587. *Here:* used locally to talk to Mailpit. Render's free plan blocks SMTP ports, so
+production uses Resend's HTTP API.
+
 **Snapshot** — A copy of data taken at one moment so later changes don't affect it. *Here:* product name, price and
 final-sale flag on `order_items`.
 
 **Soft 404** — A "not found" page sent with status 200. Next.js adds `noindex` so search engines skip it. *Here:* unknown
 product URLs (because the response is streamed).
 
+**SPF (Sender Policy Framework)** — A DNS TXT record listing which servers may send email for a domain. *Here:* the
+`send.kora` TXT record from Resend.
+
 **SQLAlchemy** — The Python ORM and database toolkit we use. *Here:* `db` in `extensions.py`.
+
+**SQLAlchemy event (hook)** — A function SQLAlchemy calls when something happens, such as `after_commit` or
+`after_rollback`. *Here:* `_send_after_commit` and `_forget_after_rollback` in `backend/app/mail/outbox.py`.
 
 **sslmode** — A Postgres connection setting for TLS encryption; `require` means never connect unencrypted. *Here:* required for remote databases in production.
 
@@ -480,6 +552,9 @@ offline end-to-end tests.
 
 **Support ticket** — A customer request for human help. *Here:* `support_tickets`, created by `/contact` and later
 the agent.
+
+**Suppressed email** — An email we deliberately didn't send, but still recorded with a reason: `blocked_domain`,
+`unverified` or `recipient_daily_cap`. *Here:* `email_outbox.status = 'suppressed'`.
 
 **Suspense** — A React component that shows a fallback while its children load. *Here:* around every data-fetching
 part of a page.

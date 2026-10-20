@@ -1,0 +1,30 @@
+{% extends "base.txt" %}
+{% block content %}
+Your {{ ret.kind }} is approved
+
+Hi {{ order.first_name }}, we've approved your {{ ret.kind }} for order {{ order.number }}:
+
+{% for line in ret.lines %}
+- {{ line }}
+{% endfor %}
+{% if ret.exchange_details %}
+
+{{ ret.exchange_details }}
+{% endif %}
+
+HOW TO SEND IT BACK
+1. Pack the items unworn, with their tags still attached.
+{% if ret.prepaid_label %}
+2. We'll email your free prepaid return label within 1 business day. Print it and stick it on the parcel.
+3. Drop the parcel at any post office or carrier location.
+{% else %}
+2. Send the parcel to us with a tracked service of your choice (return shipping from outside the US is paid by you).
+3. Write your order number, {{ order.number }}, on a note inside the parcel.
+{% endif %}
+
+{{ ret.after_receipt }}
+{% if note %}
+
+{{ note }}
+{% endif %}
+{% endblock %}

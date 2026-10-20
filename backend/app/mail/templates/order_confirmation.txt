@@ -1,0 +1,15 @@
+{% extends "base.txt" %}
+{% import "_macros.txt" as ui %}
+{% block content %}
+Thank you for your order
+
+Hi {{ order.first_name }}, we've received your order and we're processing it now. Orders ship within 1-2 business days, and we'll email you as soon as yours is on its way.
+{% if order.is_cod %}
+
+You chose cash on delivery. Please have {{ order.total }} ready in cash for the courier.
+{% endif %}
+
+Track your order: {{ order.track_url }}
+
+{{ ui.order_summary(order) }}
+{% endblock %}

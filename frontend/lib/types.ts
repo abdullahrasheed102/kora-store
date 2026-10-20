@@ -123,7 +123,17 @@ export type CartQuote = {
   has_issues: boolean;
 };
 
-export type User = { id: number; email: string; name: string; role: "customer" | "admin"; created_at: string };
+export type User = {
+  id: number;
+  email: string;
+  name: string;
+  role: "customer" | "admin";
+  // False until the owner clicks the link we emailed. Until then, no order emails are sent.
+  email_verified: boolean;
+  created_at: string;
+};
+
+export type EmailVerified = { verified: true; email: string; order_number: string | null };
 
 export type Country = "US" | "GB" | "CA" | "AU";
 

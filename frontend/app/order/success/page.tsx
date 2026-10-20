@@ -66,6 +66,12 @@ async function Confirmation({ searchParams }: Pick<PageProps<"/order/success">, 
           ) : (
             <WaitForPayment />
           )}
+          {confirmed && (
+            <p className="mt-3 text-sm text-muted">
+              Your confirmation is on its way to <span className="break-all font-medium text-ink">{order.email}</span>. First
+              order with this address? We&apos;ll ask you to confirm it first.
+            </p>
+          )}
           <p className="mt-3 text-xs text-muted">
             This is a portfolio demonstration store: no payment was taken and nothing will be shipped.
           </p>

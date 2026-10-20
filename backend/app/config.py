@@ -31,6 +31,9 @@ def normalize_database_url(url: str) -> str:
 
 
 PAYMENT_PROVIDERS = {"sandbox", "stripe"}
+# log: print emails to the log, send nothing (tests) · mailpit: deliver to the local Mailpit
+# inbox at http://localhost:8025 (development) · resend: really send, through Resend's HTTP API.
+EMAIL_PROVIDERS = {"log", "mailpit", "resend"}
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "db"}  # "db": the docker compose service name
 SAFE_SSL_MODES = {"require", "verify-ca", "verify-full"}
 MIN_SECRET_LENGTH = 32
@@ -76,6 +79,7 @@ class BaseConfig:
     # --- Rate limiting ---
     RATELIMIT_HEADERS_ENABLED = True  # send Retry-After so clients know when to try again
     SQLALCHEMY_ENGINE_OPTIONS: dict[str, Any] = {"pool_pre_ping": True}  # replaced per URL below
+    DEFAULT_EMAIL_PROVIDER = "log"  # production must choose "resend" explicitly (render.yaml)
 
     def __init__(self) -> None:
         self.SECRET_KEY = require_env("SECRET_KEY")
@@ -107,11 +111,35 @@ class BaseConfig:
         # Optional: `flask seed` creates the admin account from these when both are set.
         self.ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL")
         self.ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+        self._load_email_settings()
+
+    def _load_email_settings(self) -> None:
+        # --- Email (docs/guide/08a-email-notifications.md) ---
+        self.EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", self.DEFAULT_EMAIL_PROVIDER)
+        if self.EMAIL_PROVIDER not in EMAIL_PROVIDERS:
+            raise RuntimeError(f"EMAIL_PROVIDER must be one of {sorted(EMAIL_PROVIDERS)}")
+        self.EMAIL_FROM = os.environ.get("EMAIL_FROM", "Kora Outfitters <orders@kora.local>")
+        self.RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+        self.RESEND_API_URL = os.environ.get("RESEND_API_URL", "https://api.resend.com")
+        self.MAILPIT_SMTP_HOST = os.environ.get("MAILPIT_SMTP_HOST", "localhost")
+        self.MAILPIT_SMTP_PORT = int(os.environ.get("MAILPIT_SMTP_PORT", "1025"))
+        # Where new-ticket alerts go, and the Reply-To on customer emails (so replies reach a person).
+        self.ADMIN_NOTIFY_EMAIL = os.environ.get("ADMIN_NOTIFY_EMAIL") or None
+        # The scheduled retry job sends this as a Bearer token. Empty = the endpoint is switched off.
+        self.OUTBOX_CRON_SECRET = os.environ.get("OUTBOX_CRON_SECRET", "")
+        # Stay under Resend's free tier (100 emails a day) and stop one address being flooded.
+        self.EMAIL_DAILY_CAP = int(os.environ.get("EMAIL_DAILY_CAP", "80"))
+        self.EMAIL_RECIPIENT_DAILY_CAP = int(os.environ.get("EMAIL_RECIPIENT_DAILY_CAP", "10"))
+        # True: send in a background thread after the commit, so nobody waits for the email
+        # provider. Tests send inline instead, so they can check the result straight away.
+        self.EMAIL_SEND_IN_BACKGROUND = True
 
 
 class DevelopmentConfig(BaseConfig):
     DEBUG = True
     JWT_COOKIE_SECURE = False  # http://localhost has no HTTPS
+    # Locally, every email lands in Mailpit (docker compose) and nothing leaves your laptop.
+    DEFAULT_EMAIL_PROVIDER = "mailpit"
 
 
 class ProductionConfig(BaseConfig):
@@ -149,6 +177,15 @@ class TestingConfig(BaseConfig):
         self.STRIPE_SECRET_KEY = "sk_test_dummy"
         self.STRIPE_WEBHOOK_SECRET = "whsec_test_secret"
         self.STRIPE_API_BASE = ""
+        self._load_email_settings()
+        # Fixed values, so a developer's .env can't change what the tests expect.
+        self.EMAIL_PROVIDER = "log"
+        self.EMAIL_FROM = "Kora Outfitters <orders@kora.local>"
+        self.ADMIN_NOTIFY_EMAIL = "owner@kora.local"
+        self.OUTBOX_CRON_SECRET = "test-outbox-cron-secret"
+        self.EMAIL_DAILY_CAP = 80
+        self.EMAIL_RECIPIENT_DAILY_CAP = 10
+        self.EMAIL_SEND_IN_BACKGROUND = False
 
 
 def production_problems(config: BaseConfig) -> list[str]:
@@ -172,6 +209,15 @@ def production_problems(config: BaseConfig) -> list[str]:
 
     if config.PAYMENT_PROVIDER == "stripe" and not (config.STRIPE_SECRET_KEY and config.STRIPE_WEBHOOK_SECRET):
         problems.append("PAYMENT_PROVIDER=stripe needs STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET")
+
+    if config.EMAIL_PROVIDER == "mailpit":
+        problems.append("EMAIL_PROVIDER=mailpit is for local development; use resend (or log)")
+    if config.EMAIL_PROVIDER == "resend":
+        for name in ("RESEND_API_KEY", "EMAIL_FROM", "ADMIN_NOTIFY_EMAIL"):
+            if not getattr(config, name):
+                problems.append(f"EMAIL_PROVIDER=resend needs {name}")
+    if config.OUTBOX_CRON_SECRET and len(config.OUTBOX_CRON_SECRET) < MIN_SECRET_LENGTH:
+        problems.append(f"OUTBOX_CRON_SECRET must be a random value of at least {MIN_SECRET_LENGTH} characters")
 
     workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
     if config.RATELIMIT_STORAGE_URI.startswith("memory://") and workers > 1:

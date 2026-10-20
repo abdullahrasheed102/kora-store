@@ -30,7 +30,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app import payments
+from app import notifications, payments
 from app.accounts import AddressBody
 from app.errors import APIError
 from app.models import (
@@ -214,7 +214,9 @@ def create_cod_order(session: Session, body: CodCheckoutBody, user: User | None)
         OrderEvent(status=OrderStatus.PROCESSING, note="Order placed. Payment: cash on delivery."),
     ]
     session.add(order)
-    session.commit()  # order, items, stock and event: all or nothing
+    session.flush()  # the order id goes into the email's idempotency key
+    notifications.order_placed(session, order)
+    session.commit()  # order, items, stock, event and email: all or nothing
 
     if body.save_address and user:
         _save_address_quietly(session, user, body.address)
@@ -354,7 +356,8 @@ def _fulfil(session: Session, order: Order, checkout_session: dict[str, Any]) ->
     order.payment_status = PaymentStatus.PAID
     order.status_note = None
     order.events.append(OrderEvent(status=OrderStatus.PROCESSING, note="Payment received."))
-    session.commit()  # stock, status, event and the StripeEvent row: all or nothing
+    notifications.order_placed(session, order)  # an outbox row, saved (or not) with everything else
+    session.commit()  # stock, status, event, email and the StripeEvent row: all or nothing
     return "fulfilled"
 
 

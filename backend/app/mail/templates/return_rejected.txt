@@ -1,0 +1,16 @@
+{% extends "base.txt" %}
+{% block content %}
+About your return
+
+Hi {{ order.first_name }}, we've looked at your {{ ret.kind }} request for order {{ order.number }}, and unfortunately we can't accept it:
+
+{% for line in ret.lines %}
+- {{ line }}
+{% endfor %}
+
+{{ note }}
+
+If you think we got this wrong, just reply to this email and a person on our team will take another look.
+
+Our full returns policy: {{ site_url }}/policies/returns
+{% endblock %}

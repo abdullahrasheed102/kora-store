@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}One click to confirm your email address.{% endblock %}
+{% block content %}
+{{ ui.heading("Confirm your email") }}
+{% call ui.paragraph() %}Hi {{ name }}, welcome to Kora Outfitters. Please confirm this is your email address, so we can send you order updates.{% endcall %}
+{{ ui.button(verify_url, "Confirm my email") }}
+{% call ui.paragraph() %}<span style="color:{{ colors.muted }};font-size:14px;">The link works for 7 days. If the button doesn't work, copy this address into your browser:<br><a href="{{ verify_url }}" style="color:{{ colors.accent }};word-break:break-all;">{{ verify_url }}</a></span>{% endcall %}
+{% endblock %}
+{% block footer_note %}<p style="margin:0 0 6px;">You're getting this because someone created a Kora account with this address. If it wasn't you, ignore this email.</p>{% endblock %}

@@ -10,6 +10,8 @@ flowchart LR
     R -->|"TLS, pooled"| N[("Neon<br/>Postgres")]
     S[Stripe, optional] -->|signed webhook| R
     G[GitHub Actions<br/>hourly] -->|flask orders expire-unpaid| N
+    R -->|"HTTPS API"| E["Resend<br/>email"]
+    G2[GitHub Actions<br/>every 5 min] -->|"POST /api/email/outbox/process"| R
 ```
 
 Everything below fits the **free plans**. Total cost: $0.
@@ -20,6 +22,7 @@ Everything below fits the **free plans**. Total cost: $0.
 | Database | Neon, AWS US East (N. Virginia) | project `kora` |
 | API | Render, Virginia | `kora-api` → `https://kora-api.onrender.com` |
 | Website | Vercel, `iad1` (Washington, D.C.) | `kora-outfitters` → `https://kora-outfitters.vercel.app` |
+| Email | Resend (free: 100 emails a day) | sends from `orders@kora.abdullahrasheed.tech` |
 
 If a name is taken, you'll get a slightly different URL. Write down the real URLs and use them wherever
 this file says `kora-api.onrender.com` or `kora-outfitters.vercel.app`.
@@ -198,6 +201,101 @@ while it starts. Before sending the link to someone, open the site once. Or:
   and you stay inside Neon's free compute hours.
 - One always-on free service uses about 744 of Render's 750 free hours a month, so don't keep a second free service
   awake as well.
+- Once step 9's email job runs every 5 minutes, it keeps the API awake too, so you don't need a pinger. It still
+  lets Neon sleep: the endpoint only queries the database when an email might be waiting.
+
+---
+
+## Step 9: Email with Resend (phase 8A)
+
+The store emails customers when an order is placed, shipped, delivered, cancelled or refunded, and emails **you**
+when a support ticket is created. Read [docs/guide/08a-email-notifications.md](docs/guide/08a-email-notifications.md)
+for how it works. Do the steps **in this order**: the API refuses to start with `EMAIL_PROVIDER=resend` until the
+Resend key, the From address and your own address are set.
+
+### 9.1 Resend account and API key
+
+1. Sign up at [resend.com](https://resend.com) with your own email.
+2. **API Keys → Create API key**. Name `kora-api`, permission **Sending access**, domain: all (or your domain once
+   it exists). Copy the key (`re_…`). Resend shows it only once.
+
+### 9.2 Verify the sending domain (SPF and DKIM)
+
+Mail servers only trust email from a domain that proves the sender is allowed to use it. We send from a
+**subdomain**, `kora.abdullahrasheed.tech`, so the store's email can never hurt the reputation of your main address.
+
+1. Resend → **Domains → Add domain** → `kora.abdullahrasheed.tech`, region **North Virginia (us-east-1)**
+   (next to Render and Neon).
+2. Resend shows 3 or 4 DNS records. The domain was bought at **get.tech**, and its DNS is hosted there too
+   (nameservers `tech-domains.*.orderbox-dns.com`; check with `dig NS abdullahrasheed.tech +short`). So add them in
+   get.tech's control panel → your domain → **Manage DNS**: the same screen where the `kora` CNAME for Vercel lives.
+   It has a separate tab per record type (TXT, MX, …):
+
+   | Type | Name (host) | Value | What it is |
+   |---|---|---|---|
+   | TXT | `resend._domainkey.kora` | `p=MIGfMA0…` (long) | **DKIM**: the public key that checks our emails' signatures |
+   | MX | `send.kora` | `feedback-smtp.us-east-1.amazonses.com`, priority 10 | Where bounce reports go |
+   | TXT | `send.kora` | `v=spf1 include:amazonses.com ~all` | **SPF**: which servers may send for this domain |
+   | TXT | `_dmarc.kora` | `v=DMARC1; p=none;` | **DMARC** (recommended): what to do with mail that fails the checks |
+
+   The website already uses `kora` itself (a CNAME to Vercel). These records sit on *different* names
+   (`send.kora`, `resend._domainkey.kora`, `_dmarc.kora`), so they don't clash with it.
+
+   Copy the values from **your** Resend page, not from this table. Most DNS panels add the main domain for you,
+   so the host is `resend._domainkey.kora`, not the full `resend._domainkey.kora.abdullahrasheed.tech`. If your
+   panel shows the full name after saving, that's right. If it shows the domain twice, remove the extra part.
+3. Check the records are public before asking Resend (each command should print the value you entered):
+   ```bash
+   dig TXT resend._domainkey.kora.abdullahrasheed.tech +short
+   dig TXT send.kora.abdullahrasheed.tech +short
+   dig MX  send.kora.abdullahrasheed.tech +short
+   dig TXT _dmarc.kora.abdullahrasheed.tech +short
+   ```
+   If one still prints nothing after about 30 minutes, look at its host field in the panel. If it reads
+   `send.kora.abdullahrasheed.tech` and the panel *also* adds the domain, the real name became
+   `send.kora.abdullahrasheed.tech.abdullahrasheed.tech`. Change the host to the short form, `send.kora`.
+4. Click **Verify DNS records**. It usually takes a few minutes (sometimes up to an hour). Wait until the domain
+   shows **Verified**.
+
+Until the domain is verified, Resend only delivers to **your own Resend account address**. That's enough for the
+first test, with `EMAIL_FROM=Kora Outfitters <onboarding@resend.dev>`.
+
+### 9.3 Add the variables on Render (before you push the code)
+
+Render → `kora-api` → **Environment** → **Add environment variable** for each row, then **Save, rebuild, and deploy**:
+
+| Key | Value |
+|---|---|
+| `EMAIL_PROVIDER` | `resend` |
+| `RESEND_API_KEY` | the `re_…` key from 9.1 |
+| `EMAIL_FROM` | `Kora Outfitters <orders@kora.abdullahrasheed.tech>` |
+| `ADMIN_NOTIFY_EMAIL` | your own inbox (ticket alerts, and the Reply-To on customer emails) |
+| `OUTBOX_CRON_SECRET` | run `python3 -c "import secrets; print(secrets.token_hex(32))"` and paste the result |
+| `EMAIL_DAILY_CAP` | `80` |
+| `EMAIL_RECIPIENT_DAILY_CAP` | `10` |
+
+Why before pushing: the Blueprint (`render.yaml`) sets `EMAIL_PROVIDER=resend` on the next deploy. If the key isn't
+there yet, the new version refuses to start (Render keeps the old one running, so the site stays up, but the deploy
+fails). Then push the code. Its first start runs the new migration (`email_outbox`, `verified_emails`).
+
+### 9.4 Turn on the 5-minute retry job
+
+`.github/workflows/email-outbox.yml` retries emails that couldn't be sent at once. It skips itself until it has
+two secrets. GitHub → repository → **Settings → Secrets and variables → Actions → New repository secret**:
+
+- `BACKEND_URL` = `https://kora-api.onrender.com` (your Render URL, no trailing slash)
+- `OUTBOX_CRON_SECRET` = the same value you set on Render in 9.3
+
+Then **Actions** → **Email outbox** → **Run workflow**. The log ends with JSON like
+`{"skipped": false, "sent": 0, …}` (the first run after a restart checks the database) or `{"skipped": true}`.
+
+### 9.5 Check it works
+
+1. Sign up on the live site with **your real email**. A "Confirm your email" message arrives within a minute.
+   Click it.
+2. Place a cash-on-delivery order while logged in. The order confirmation arrives within a minute.
+3. Send the contact form. The ticket alert arrives at `ADMIN_NOTIFY_EMAIL`.
+4. Resend → **Emails** shows each one as **Delivered**.
 
 ---
 
@@ -210,6 +308,7 @@ while it starts. Before sending the link to someone, open the site once. Or:
 | Product photos | `cd frontend && npm run images`, commit the `.webp` files **and** `backend/seed/image-manifest.json`, push. `start.sh` runs `flask images sync` |
 | Policy text | Edit it in Admin → Policies (live at once), **or** change `backend/seed/policies.json` and raise that policy's `version`, then push. `start.sh` runs `flask policies sync`, which only applies higher versions |
 | A Render environment variable | Render → Environment → Save, rebuild, and deploy |
+| Switch email off quickly | Render → Environment → `EMAIL_PROVIDER=log` → Save. Emails are then only written to the log |
 | `BACKEND_URL` / `NEXT_PUBLIC_*` on Vercel | Change it, then **Redeploy** (they're baked in at build time) |
 
 ## Troubleshooting
@@ -226,3 +325,8 @@ while it starts. Before sending the link to someone, open the site once. Or:
 | Paying on a Vercel *preview* URL returns you to the production site | Expected: the API sends shoppers back to `FRONTEND_URL`. Test payments on the production URL |
 | `relation "…" does not exist` | Migrations didn't run: check the start of the Render log, or run step 2's `flask db upgrade` again |
 | Product photos missing | `image-manifest.json` or the `.webp` files weren't committed. Commit both and push |
+| Render log: `EMAIL_PROVIDER=resend needs RESEND_API_KEY` (or `EMAIL_FROM`, `ADMIN_NOTIFY_EMAIL`) | Add the missing variable (step 9.3) |
+| No email arrives | Neon → SQL Editor: `select kind, to_email, status, suppressed_reason, last_error from email_outbox order by id desc limit 10;`. `suppressed` + `unverified`: the address hasn't clicked its confirmation link. `blocked_domain`: an `@example.com` or `.test` address (never emailed). `failed`: read `last_error` |
+| `last_error` says `Resend 403 … domain is not verified` | Finish step 9.2, or use `onboarding@resend.dev` as the From address while testing (it only delivers to your own Resend address) |
+| Emails land in spam | Check that the DKIM, SPF and DMARC records all show **Verified** in Resend. Brand-new domains have no reputation yet, so the first few emails may go to spam anyway |
+| Email outbox workflow fails with `401` | `OUTBOX_CRON_SECRET` differs between GitHub and Render: paste the same value in both |

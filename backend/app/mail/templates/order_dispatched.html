@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}{{ shipment.carrier }} has your parcel{% if shipment.estimated_delivery %}, expected {{ shipment.estimated_delivery }}{% endif %}.{% endblock %}
+{% block content %}
+{{ ui.heading("Part of your order has shipped" if partial else "Your order is on its way") }}
+{% call ui.paragraph() %}Good news, {{ order.first_name }}: {{ "some of the items in" if partial else "" }} order <strong>{{ order.number }}</strong> {{ "have" if partial else "has" }} left our warehouse.{% if partial %} We'll email you again when the rest ships.{% endif %}{% endcall %}
+{{ ui.details([("Carrier", shipment.carrier), ("Tracking number", shipment.tracking_number), ("Expected delivery", shipment.estimated_delivery)]) }}
+{% if shipment.note %}{{ ui.note(shipment.note) }}{% endif %}
+{% if order.is_cod %}
+{{ ui.note("Cash on delivery: please have " ~ order.total ~ " ready for the courier.") }}
+{% endif %}
+{{ ui.button(order.track_url, "Track your parcel") }}
+{{ ui.order_summary(order) }}
+{% endblock %}

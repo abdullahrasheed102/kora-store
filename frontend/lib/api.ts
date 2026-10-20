@@ -9,6 +9,7 @@ import type {
   AdminProduct,
   AdminReturn,
   CreateReturnRequest,
+  EmailVerified,
   OrderDetail,
   ReturnEligibility,
   ReturnRequestView,
@@ -135,6 +136,12 @@ export const api = {
   returnEligibility: (order_number: string, email?: string) =>
     request<ReturnEligibility>("/returns/eligibility", json("POST", { order_number, email })),
   createReturn: (body: CreateReturnRequest) => request<ReturnRequestView>("/returns", json("POST", body)),
+
+  // Email verification. The token comes from the link in the email; POST, so mail scanners that
+  // open links automatically can't confirm an address by accident.
+  verifyEmail: (token: string) => request<EmailVerified>("/email/verify", json("POST", { token })),
+  resendVerification: () =>
+    request<{ sent: boolean; already_verified: boolean }>("/email/resend-verification", json("POST")),
 
   contact: (body: { name: string; email: string; order_number?: string; subject: string; message: string }) =>
     request<{ id: number }>("/support/contact", json("POST", body)),

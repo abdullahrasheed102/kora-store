@@ -1,0 +1,15 @@
+{% macro order_summary(order) -%}
+ORDER {{ order.number }}
+{% for item in order["items"] %}
+- {{ item.name }} ({{ item.variant }}) x {{ item.quantity }}: {{ item.line_total }}
+{% endfor %}
+
+Subtotal: {{ order.subtotal }}
+{{ order.shipping_method }}: {{ order.shipping }}
+Total: {{ order.total }}
+
+Shipping to:
+{% for line in order.address %}
+{{ line }}
+{% endfor %}
+{%- endmacro %}

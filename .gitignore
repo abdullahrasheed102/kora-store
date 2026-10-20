@@ -16,3 +16,6 @@ node_modules/
 # Full-size original photos: large and not served. Only the optimized WebP files in
 # frontend/public/images/ are committed (run `npm run images` to regenerate them).
 image-originals/
+
+# HTML files written by `flask email preview` (open them in a browser; regenerate any time)
+email-previews/

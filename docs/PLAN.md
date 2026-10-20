@@ -131,15 +131,24 @@ Migrations and the image sync run in `backend/start.sh` before gunicorn starts (
 
 **Concepts:** WSGI servers, production config, secrets management, connection pooling, cold starts, debugging from logs.
 
-### Phase 8 — AI support agent (the main event)
-This is the part interviewers will ask about most, so it gets the most detailed guide. Planned in detail once the store is live:
-1. The `/api/agent/*` endpoints with API-key auth.
-2. A LangGraph supervisor with Order, Product and Returns agents, using Groq for routing and Gemini for the specialists.
-3. Tools that call the backend, guardrails (verify the order email before sharing data, escalate risky cases), and conversation memory.
-4. Evals: 30+ test conversations with expected outcomes, run in CI, plus tracing.
-5. A chat widget on the store, then WhatsApp.
+### Phase 8 — AI assistants (the main event)
+This is the part interviewers will ask about most, so it gets the most detailed guide.
 
-✅ Done when: the chat widget answers order, product and return questions using real data, and the eval suite passes in CI.
+**The detailed plan is in [`docs/AI_PLAN.md`](AI_PLAN.md).** It replaces the short outline that used to be here, and
+it wins if the two documents ever disagree. In short: two assistants on one shared agent core (**Kora Support** for
+customers, **Kora Copilot** for admins), plus automatic email notifications that both of them use. Phase 8 is built
+in steps, one at a time (AI_PLAN.md section 8):
+
+| Step | What |
+|---|---|
+| 8A | Email foundation: Resend, outbox, templates, automatic notifications, email verification, abuse limits (no AI) |
+| 8B | Agent core: LangGraph, model providers + fallback, Postgres checkpointer, tool layer, tracing, `run_turn` |
+| 8C | Kora Support + streaming chat widget |
+| 8D | Kora Copilot + admin approval cards |
+| 8E | Evals, guardrail hardening, cost and rate limits, study guide |
+| 8F | Voice channel (later) |
+
+✅ Done when: each step meets its own "done when" in AI_PLAN.md section 8.
 
 **Concepts (the guide covers each in depth):**
 - **Agents vs chatbots** — a chatbot only replies; an agent decides which actions to take and calls tools.
@@ -154,7 +163,7 @@ This is the part interviewers will ask about most, so it gets the most detailed 
 
 ## 5. Environment variables
 - Agent (phase 8): `GROQ_API_KEY`, `GEMINI_API_KEY`, `AGENT_API_KEY`, `BACKEND_URL`
-- Backend: `APP_ENV`, `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `FRONTEND_URL`, `TRUSTED_PROXY_COUNT`, `WEB_CONCURRENCY`, `RATELIMIT_STORAGE_URI`, `PAYMENT_PROVIDER`, `SANDBOX_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ADMIN_EMAIL`/`ADMIN_PASSWORD` (seed only), `AGENT_API_KEY` (Phase 8). Production values: `render.yaml`
+- Backend: `APP_ENV`, `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET_KEY`, `FRONTEND_URL`, `TRUSTED_PROXY_COUNT`, `WEB_CONCURRENCY`, `RATELIMIT_STORAGE_URI`, `PAYMENT_PROVIDER`, `SANDBOX_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `ADMIN_EMAIL`/`ADMIN_PASSWORD` (seed only), `AGENT_API_KEY` (Phase 8). Email (8A): `EMAIL_PROVIDER` (`log`/`mailpit`/`resend`), `EMAIL_FROM`, `RESEND_API_KEY`, `ADMIN_NOTIFY_EMAIL`, `OUTBOX_CRON_SECRET`, `EMAIL_DAILY_CAP`, `EMAIL_RECIPIENT_DAILY_CAP`, `MAILPIT_SMTP_HOST`/`MAILPIT_SMTP_PORT`. Production values: `render.yaml`
 - Frontend: `BACKEND_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_ASSISTANT_ENABLED`
 
 ## 6. Hosting notes
@@ -163,4 +172,4 @@ This is the part interviewers will ask about most, so it gets the most detailed 
 - **Stripe**: test mode only. Add the production webhook endpoint `https://<render-app>/api/stripe/webhook` in the Stripe dashboard.
 
 ## 7. Nice-to-have later
-Discount codes, order confirmation emails (Resend), product reviews, wishlist, image uploads (Cloudinary), analytics.
+Discount codes, product reviews, wishlist, image uploads (Cloudinary), analytics.

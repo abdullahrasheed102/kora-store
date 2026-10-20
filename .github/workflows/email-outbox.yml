@@ -1,0 +1,44 @@
+# Retries emails that weren't sent right after their change was committed (a provider outage,
+# a crash, or emails postponed by the daily cap). Render's free plan has no cron jobs or
+# background workers, so GitHub calls our endpoint every 5 minutes instead.
+#
+# The endpoint does the work on Render, so the Resend key never has to be copied to GitHub.
+# It also skips the database when nothing can be waiting, so Neon can still go to sleep.
+#
+# Setup: GitHub repo > Settings > Secrets and variables > Actions > New repository secret
+#   BACKEND_URL         = the Render URL, e.g. https://kora-api.onrender.com (no trailing slash)
+#   OUTBOX_CRON_SECRET  = the same value as OUTBOX_CRON_SECRET on Render
+# Until both secrets exist, the job skips itself.
+name: Email outbox
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # GitHub's minimum; under load, runs can start a few minutes late
+  workflow_dispatch: # also a "Run workflow" button in the Actions tab
+
+permissions: {} # needs nothing from the repository
+
+concurrency:
+  group: email-outbox # never two runs at once (a slow cold start could overlap the next run)
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    env:
+      BACKEND_URL: ${{ secrets.BACKEND_URL }}
+      OUTBOX_CRON_SECRET: ${{ secrets.OUTBOX_CRON_SECRET }}
+    steps:
+      - name: Process the outbox
+        run: |
+          if [ -z "$BACKEND_URL" ] || [ -z "$OUTBOX_CRON_SECRET" ]; then
+            echo "::notice::BACKEND_URL or OUTBOX_CRON_SECRET secret is not set; nothing to do."
+            exit 0
+          fi
+          # --max-time 120: a sleeping Render free instance takes up to ~60 s to wake up.
+          # --retry: one more try if the instance was still starting. --fail: non-2xx fails the job.
+          curl --silent --show-error --fail --max-time 120 --retry 2 --retry-delay 10 --retry-all-errors \
+            -X POST "$BACKEND_URL/api/email/outbox/process" \
+            -H "Authorization: Bearer $OUTBOX_CRON_SECRET"
+          echo

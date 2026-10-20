@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String, text
@@ -35,6 +36,9 @@ class User(db.Model):
         default=UserRole.CUSTOMER,
         server_default=UserRole.CUSTOMER.value,
     )
+    # Set when the owner clicks the link in the "confirm your email" message. Until then the
+    # account works normally, but we send it no order emails (see app/email/verification.py).
+    email_verified_at: Mapped[datetime | None]
     created_at: Mapped[CreatedAt]
 
     addresses: Mapped[list[Address]] = relationship(
@@ -45,6 +49,10 @@ class User(db.Model):
     @validates("email")
     def _normalize_email(self, _key: str, value: str) -> str:
         return normalize_email(value)
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
 
     @property
     def is_admin(self) -> bool:

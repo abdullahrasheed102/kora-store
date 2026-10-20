@@ -1,0 +1,17 @@
+{% extends "base.txt" %}
+{% import "_macros.txt" as ui %}
+{% block content %}
+Your order has been cancelled
+
+Hi {{ order.first_name }}, order {{ order.number }} has been cancelled and won't be shipped.
+{% if note %}
+
+{{ note }}
+{% endif %}
+
+YOUR REFUND
+{{ refund.summary }}{% if refund.detail %} {{ refund.detail }}{% endif %}
+
+
+{{ ui.order_summary(order) }}
+{% endblock %}

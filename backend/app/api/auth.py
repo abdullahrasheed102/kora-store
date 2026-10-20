@@ -15,7 +15,7 @@ from flask.typing import ResponseReturnValue
 from flask_jwt_extended import current_user, jwt_required
 from sqlalchemy.exc import IntegrityError
 
-from app import accounts
+from app import accounts, notifications
 from app.accounts import AddressBody, LoginBody, SignupBody
 from app.errors import APIError
 from app.extensions import db, limiter
@@ -46,6 +46,9 @@ def signup() -> ResponseReturnValue:
     user = User(email=body.email, password_hash=hash_password(body.password), name=body.name)
     db.session.add(user)
     try:
+        db.session.flush()  # the user id goes into the email's idempotency key
+        # Written in the same transaction as the account: no account, no email (app/mail/outbox.py).
+        notifications.account_verification(db.session, user)
         db.session.commit()
     except IntegrityError:  # two signups with the same email at the same moment
         db.session.rollback()

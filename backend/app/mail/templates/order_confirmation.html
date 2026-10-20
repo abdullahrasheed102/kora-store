@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}Thanks, {{ order.first_name }}! We're getting order {{ order.number }} ready.{% endblock %}
+{% block content %}
+{{ ui.heading("Thank you for your order") }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, we've received your order and we're processing it now. Orders ship within 1–2 business days, and we'll email you as soon as yours is on its way.{% endcall %}
+{% if order.is_cod %}
+{{ ui.note("You chose cash on delivery. Please have " ~ order.total ~ " ready in cash for the courier.") }}
+{% endif %}
+{{ ui.button(order.track_url, "Track your order") }}
+{{ ui.order_summary(order) }}
+{% endblock %}

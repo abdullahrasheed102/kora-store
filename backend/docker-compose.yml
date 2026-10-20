@@ -1,4 +1,4 @@
-# Local Postgres for development and tests. Production uses Neon.
+# Local services for development and tests. Production uses Neon (database) and Resend (email).
 # Start: docker compose up -d   ·   Stop: docker compose down   ·   Wipe data: docker compose down -v
 services:
   db:
@@ -17,6 +17,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # A fake mail server with an inbox you can see: every email the app sends locally lands here
+  # instead of reaching a real person. Inbox: http://localhost:8025 · SMTP (the app sends here): 1025
+  mailpit:
+    image: axllent/mailpit:v1.27.11
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    environment:
+      MP_MAX_MESSAGES: 500  # keep the newest 500, so the inbox never grows forever
 
 volumes:
   kora_pg:

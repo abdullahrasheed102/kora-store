@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { StatusBadge } from "@/components/account/status-badge";
+import { VerifyBanner } from "@/components/account/verify-banner";
 import { TextSkeleton } from "@/components/skeletons";
 import { accountApi, requireCustomer } from "@/lib/api-server";
 import { COUNTRY_NAMES, formatDate, formatPrice } from "@/lib/format";
@@ -24,6 +25,7 @@ async function Overview() {
 
   return (
     <div className="space-y-12">
+      {!user.email_verified && <VerifyBanner email={user.email} />}
       <section>
         {/* The full name: "first word" broke for names like "Store Admin" ("Hello, Store."). */}
         <p className="font-serif text-2xl">Hello, {user.name}.</p>

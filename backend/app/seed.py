@@ -315,7 +315,11 @@ def _build_return_request(order: Order) -> ReturnRequest:
 def _build_admin(email: str, password: str) -> User:
     if len(password) < MIN_ADMIN_PASSWORD_LENGTH:
         raise ValueError(f"ADMIN_PASSWORD must be at least {MIN_ADMIN_PASSWORD_LENGTH} characters")
-    return User(email=email, password_hash=hash_password(password), name="Store Admin", role=UserRole.ADMIN)
+    # Verified from the start: the store owner set this address up themselves.
+    return User(
+        email=email, password_hash=hash_password(password), name="Store Admin", role=UserRole.ADMIN,
+        email_verified_at=datetime.now(UTC),
+    )
 
 
 def _days_ago(now: datetime, days: int | None) -> datetime | None:

@@ -18,7 +18,9 @@ from sqlalchemy.orm import scoped_session
 from app import create_app
 from app.config import TestingConfig
 from app.extensions import db
-from app.models import User
+from app.mail import outbox
+from app.mail.senders import OutgoingEmail
+from app.models import User, VerifiedEmail
 from app.payments import StripeProvider
 from app.security import hash_password
 from app.seed import SeedCounts, reset_database, seed_database
@@ -181,3 +183,41 @@ def admin_client(app: Flask, admin_user: User) -> FlaskClient:
     response = client.post("/api/auth/login", json={"email": "boss@example.com", "password": "admin-password-123"})
     assert response.status_code == 200, response.get_json()
     return client
+
+
+# --- email -------------------------------------------------------------------------------------------
+
+# Not a reserved domain, so emails to it are really "sent" (to the recording fake below).
+SHOPPER_EMAIL = "maya@kora-shoppers.dev"
+
+
+class RecordingSender:
+    """Stands in for the email provider: keeps every email it was asked to send."""
+
+    name = "recording"
+
+    def __init__(self) -> None:
+        self.sent: list[OutgoingEmail] = []
+        self.fail_with: Exception | None = None  # set to make every send fail
+
+    def send(self, email: OutgoingEmail) -> str:
+        if self.fail_with is not None:
+            raise self.fail_with
+        self.sent.append(email)
+        return f"msg_{len(self.sent)}"
+
+    def subjects(self) -> list[str]:
+        return [email.subject for email in self.sent]
+
+
+@pytest.fixture
+def mailbox(monkeypatch: pytest.MonkeyPatch) -> RecordingSender:
+    sender = RecordingSender()
+    monkeypatch.setattr(outbox, "get_sender", lambda: sender)
+    return sender
+
+
+def verify_address(session: scoped_session, email: str) -> None:
+    """Mark an address as verified, as if its owner had clicked a confirmation link."""
+    session.add(VerifiedEmail(email=email))
+    session.commit()

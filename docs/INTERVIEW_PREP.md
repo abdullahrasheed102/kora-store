@@ -729,3 +729,78 @@ the direct peer. `ProxyFix(x_for=2)` takes the second value from the right, the 
 saw. Anything further left could be typed by the client, so we never trust it. If the count is too low, attackers
 can fake their IP. If it's too high, everyone falls back to the load balancer's IP and shares one rate limit. I log
 the chain in gunicorn's access log and checked it on the live site instead of assuming.
+
+## Phase 8A — Email notifications (the outbox)
+
+### 1. Why not just call the email API inside the request that changes the order?
+
+**Answer:** Because it's a **dual write**: the database and the email provider are two systems, and no single
+transaction covers both. If I send first and the commit then fails, the customer reads "your order shipped" about a
+change that never happened. If I commit first and then crash or Resend is down, the email is lost and nobody knows.
+It also makes the admin's click wait on a third-party API. So the request only writes an outbox row, inside the same
+transaction as the order change, and sending happens after the commit (`backend/app/mail/outbox.py`).
+
+### 2. Explain the transactional outbox pattern.
+
+**Answer:** You turn "send an email" into "insert a row" in the same transaction as the business change. The commit
+makes both real together, or neither. A separate step reads pending rows and delivers them, and marks each one sent.
+If delivery fails, the row is still there, so it's retried. In Kora, a SQLAlchemy `after_commit` hook sends new rows
+in a background thread within seconds, an `after_rollback` hook forgets them, and a GitHub Actions job calls
+`POST /api/email/outbox/process` every 5 minutes as the safety net. The same pattern is used to publish events to
+Kafka or a queue reliably. The queue publish is just as much a dual write as an email.
+
+### 3. The outbox gives at-least-once delivery. How do you avoid sending duplicates?
+
+**Answer:** Two layers of idempotency. First, every row has a unique `idempotency_key`, like
+`order-confirmation:42` or `order-status:42:<event id>`, and we insert with `ON CONFLICT DO NOTHING`. So if Stripe
+retries a webhook or an admin double-clicks, the database refuses the second row, even when the two requests race.
+Second, we pass the same key to Resend in the `Idempotency-Key` header. The dangerous moment is a crash after Resend
+accepted the email but before we saved "sent". The retry reuses the key and Resend doesn't deliver it again. Both
+layers are tested.
+
+### 4. How do retries work, and what stops two workers sending the same email?
+
+**Answer:** A sender claims due rows in a short transaction: `SELECT … FOR UPDATE SKIP LOCKED`, sets them to
+`sending` with a 2-minute **lease** (`locked_until`), and commits. Then it calls the provider with no database locks
+held, because holding locks during a network call would block other work. On success the row is `sent`. A
+temporary error (network, 429, 5xx) puts it back to `pending` with exponential backoff: 1, 5, 15, 60 and 240
+minutes. A permanent 4xx, or the 6th failure, makes it `failed`. If a sender dies mid-send, its lease expires and
+the next run takes the row over. `SKIP LOCKED` makes concurrent senders take different rows, and an advisory lock
+keeps the daily-cap count exact.
+
+### 5. A public demo store can be used to spam strangers. What did you do about it?
+
+**Answer:** Anyone can type any email at checkout or sign-up, so customer emails only go to **verified** addresses.
+Sign-up sends a signed link (itsdangerous, salted, expires in 7 days). A guest order first sends a single minimal
+"is this your email?" message with no order details. Only after a click does the confirmation go out. Reserved
+domains like `example.com` and `.test` are never emailed, which also covers all our seed data. And there are caps:
+per recipient per day (over it → dropped, since it looks like abuse) and global per day, under Resend's free tier
+(over it → postponed to tomorrow, since that's our budget problem, not the customer's). Suppressed emails are still
+recorded with a reason, so support can see what wasn't sent.
+
+### 6. What are SPF, DKIM and DMARC, and why do they matter for your project?
+
+**Answer:** They let receiving mail servers check that an email claiming to be from our domain really is. **SPF** is a
+DNS record listing the servers allowed to send for the domain. **DKIM** signs each email with a private key, with
+the public key published in DNS, which proves the email came from us and wasn't changed. **DMARC** tells receivers
+what to do when those checks fail, and where to send reports. Without them, emails go to spam or get rejected,
+and Gmail and Yahoo now require them for bulk senders. I send from a subdomain, `kora.abdullahrasheed.tech`, so the
+demo store's reputation can't hurt my main domain.
+
+### 7. Why Resend over HTTP rather than SMTP, and how do you test email locally?
+
+**Answer:** Render's free plan blocks outgoing SMTP ports to fight spam, so production uses Resend's HTTPS API through
+`httpx`. That also gives us idempotency keys and clear status codes for deciding what to retry. All providers share
+one tiny interface, `send(email) -> message_id`, the same adapter pattern as our payment providers.
+`EMAIL_PROVIDER` picks `resend`, `mailpit` or `log`. Locally, Mailpit runs in Docker and catches every email over
+SMTP, so I see the real HTML, headers and Reply-To at localhost:8025, and nothing can reach a real person. Tests use
+a recording fake, and `httpx.MockTransport` for the Resend request shape and error classes.
+
+### 8. Your retry job runs every 5 minutes. Doesn't that keep your serverless database awake?
+
+**Answer:** It would. Neon's free compute sleeps after about 5 minutes idle, and a query every 5 minutes would keep
+it awake all month and use up the free compute hours. So the process keeps a small in-memory flag, "might anything
+be waiting?". It's set after any commit that wrote an outbox row, cleared by a run that finds nothing waiting, and
+starts as true after every restart, so a crash is still covered. When it's false, the endpoint answers without
+touching the database. That's safe because we run one process. With many instances, I'd move the flag into the
+database or use a real scheduler.

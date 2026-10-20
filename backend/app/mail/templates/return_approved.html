@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}Here's how to send your {{ ret.kind }} back to us.{% endblock %}
+{% block content %}
+{{ ui.heading("Your " ~ ret.kind ~ " is approved") }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, we've approved your {{ ret.kind }} for order <strong>{{ order.number }}</strong>:{% endcall %}
+<ul style="margin:0 0 20px;padding-left:20px;">
+  {% for line in ret.lines %}<li style="margin:0 0 4px;">{{ line }}</li>{% endfor %}
+</ul>
+{% if ret.exchange_details %}{{ ui.note(ret.exchange_details) }}{% endif %}
+<h2 style="margin:24px 0 8px;font-family:Fraunces,Georgia,'Times New Roman',serif;font-size:19px;font-weight:500;">How to send it back</h2>
+<ol style="margin:0 0 20px;padding-left:20px;">
+  <li style="margin:0 0 6px;">Pack the items unworn, with their tags still attached.</li>
+  {% if ret.prepaid_label %}
+  <li style="margin:0 0 6px;">We'll email your free prepaid return label within 1 business day. Print it and stick it on the parcel.</li>
+  <li style="margin:0 0 6px;">Drop the parcel at any post office or carrier location.</li>
+  {% else %}
+  <li style="margin:0 0 6px;">Send the parcel to us with a tracked service of your choice (return shipping from outside the US is paid by you).</li>
+  <li style="margin:0 0 6px;">Write your order number, {{ order.number }}, on a note inside the parcel.</li>
+  {% endif %}
+</ol>
+{% call ui.paragraph() %}{{ ret.after_receipt }}{% endcall %}
+{% if note %}{{ ui.note(note) }}{% endif %}
+{% endblock %}

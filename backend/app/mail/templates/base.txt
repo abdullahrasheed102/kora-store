@@ -1,0 +1,11 @@
+KORA OUTFITTERS
+
+{% block content %}{% endblock %}
+
+--
+{% block footer_note %}{% endblock %}
+Kora Outfitters is a demo store. No real products are sold or shipped.
+{% if support_email and audience is not defined %}{# not on staff alerts #}
+Questions? Just reply to this email.
+{% endif %}
+{{ site_url }}

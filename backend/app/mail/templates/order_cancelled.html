@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+{% block preheader %}Order {{ order.number }} is cancelled. {{ refund.summary }}{% endblock %}
+{% block content %}
+{{ ui.heading("Your order has been cancelled") }}
+{% call ui.paragraph() %}Hi {{ order.first_name }}, order <strong>{{ order.number }}</strong> has been cancelled and won't be shipped.{% endcall %}
+{% if note %}{{ ui.note(note) }}{% endif %}
+<h2 style="margin:24px 0 8px;font-family:Fraunces,Georgia,'Times New Roman',serif;font-size:19px;font-weight:500;">Your refund</h2>
+{% call ui.paragraph() %}{{ refund.summary }}{% if refund.detail %} {{ refund.detail }}{% endif %}{% endcall %}
+{{ ui.order_summary(order) }}
+{% endblock %}

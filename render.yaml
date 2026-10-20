@@ -52,3 +52,24 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      # --- Email (phase 8A; DEPLOY.md, step 6) ---
+      # "resend" needs RESEND_API_KEY, EMAIL_FROM and ADMIN_NOTIFY_EMAIL, or the app refuses to start.
+      # Set it to "log" to switch email off without a code change (emails are then only logged).
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      # On the domain verified in Resend, e.g. Kora Outfitters <orders@kora.abdullahrasheed.tech>
+      - key: EMAIL_FROM
+        sync: false
+      # Your own inbox: new-ticket alerts, and the Reply-To on customer emails.
+      - key: ADMIN_NOTIFY_EMAIL
+        sync: false
+      # The 5-minute retry job (.github/workflows/email-outbox.yml) sends this as a Bearer token.
+      - key: OUTBOX_CRON_SECRET
+        generateValue: true
+      # Resend's free tier: 100 emails a day. Keep a margin.
+      - key: EMAIL_DAILY_CAP
+        value: "80"
+      - key: EMAIL_RECIPIENT_DAILY_CAP
+        value: "10"
