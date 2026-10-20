@@ -488,6 +488,32 @@ request and runs it in-process through the full stack — routing, error handler
 the webhook handler — without a network hop. With a real provider, the webhook would come from Stripe's servers
 instead, and nothing else changes.
 
+
+### 13. You added cash on delivery. Why is stock reserved immediately for COD, but only after payment for card?
+
+**Answer:** For card orders, most started checkouts are never paid, so reserving stock at checkout would hide items
+from real buyers for up to 30 minutes per abandoned checkout. I take stock in the webhook, once the money is
+confirmed, and handle the rare "sold out while paying" case with an automatic refund. A COD order has no later payment
+moment before shipping: I promise to ship as soon as it's placed. So I take the stock right away, in the same
+transaction that creates the order, with the same row locks the webhook uses. If anything sold out, nothing is saved.
+
+### 14. What's the fraud risk of cash on delivery, and how did you limit it?
+
+**Answer:** Placing a COD order costs nothing, so someone could create fake orders that hold stock (real shoppers then
+see "sold out") and waste courier trips. I rate limit COD orders to 3 an hour and 10 a day per IP, plus 3 a day per
+phone number, because attackers with many IPs usually reuse a few numbers. Refused attempts count too, so probing isn't
+free. A phone number is required, COD is for US addresses only, and admins can cancel, which puts the stock back. A
+real shop would add SMS verification, a maximum COD amount and blocking numbers with refused deliveries.
+
+### 15. How did you change payment data and policy text on a database you can't reset?
+
+**Answer:** Two ways. For the new `payment_status` column, the migration set each existing order's status from its
+history: never paid stays `unpaid`, returned or cancelled-after-payment becomes `refunded`, everything else `paid`. A
+test downgrades the database, inserts one old order of each kind, upgrades it and checks the result. For the policy
+text, each policy in the seed file has a `version`, and `flask policies sync` only applies a higher version. It runs on
+every deploy, it's idempotent, and an admin's edit survives until I deliberately ship a new version: like migrations,
+but for content.
+
 ---
 
 ## Phase 5 — Order tracking and returns

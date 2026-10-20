@@ -70,6 +70,10 @@ hide. *Here:* `tests/test_returns.py`.
 **Cascade (ON DELETE CASCADE)** — When a parent row is deleted, its child rows are deleted too. *Here:* deleting an
 order deletes its items and events.
 
+**Cash on delivery (COD)** — The customer pays the courier in cash when the parcel arrives. *Here:* `POST /api/checkout/cod`; stock is reserved at once, a phone number is required, and admins mark the cash collected.
+
+**CDN (Content Delivery Network)** — Servers around the world that keep copies of files close to users, so pages and images load fast everywhere. *Here:* Vercel serves the site through its CDN (e.g. the `bom1` Mumbai location, `x-vercel-cache: HIT`).
+
 **CHECK constraint** — A database rule that every row must pass, like `stock >= 0`. *Here:* see `__table_args__` in
 the models.
 
@@ -81,6 +85,8 @@ created in `backend/app/checkout.py`.
 
 **Client component** — A React component marked `"use client"` that also runs in the browser, so it can use state
 and handle clicks. *Here:* `components/shop/filter-panel.tsx`, `components/product/product-view.tsx`.
+
+**CNAME record** — A DNS record that says one name is another name for a second name. *Here:* `kora.abdullahrasheed.tech` is a CNAME to a Vercel name, so Vercel can change its servers without DNS changes.
 
 **Cold start** — The delay when a sleeping service must start before it can answer. *Here:* Render's free instance (~1 minute) and Neon's compute (~1 second).
 
@@ -97,8 +103,12 @@ Docker container.
 
 **Content Security Policy (CSP)** — A response header listing where a page may load scripts, styles, images and connections from. *Here:* `frontend/next.config.ts` (site) and `default-src 'none'` on the API.
 
+**Content versioning** — Giving seed content a version number so a live database only gets new text when the version goes up. *Here:* `version` in `policies.json`, applied by `flask policies sync`; admin edits survive until a higher version ships.
+
 **CORS (Cross-Origin Resource Sharing)** — Browser rules for when a page on one domain calls an API on a
 different domain. *Here:* we avoid it with the `/api` proxy.
+
+**CORS preflight** — An automatic `OPTIONS` request a browser sends before some cross-site requests (e.g. with JSON), asking the server's permission. *Here:* we never approve cross-site requests, which is one of our CSRF defences.
 
 **Credential stuffing** — Trying email/password pairs leaked from other websites. *Here:* slowed down by per-email rate
 limits.
@@ -108,6 +118,10 @@ cookies attached. *Here:* blocked by SameSite cookies, the `X-CSRF-TOKEN` header
 
 **CSRF token (double submit)** — A random value in a readable cookie that the frontend copies into a header. Other
 sites can't read it. *Here:* `csrf_access_token` → `X-CSRF-TOKEN`.
+
+**Custom domain** — Your own web address instead of the host's default one. *Here:* `kora.abdullahrasheed.tech` instead of a `vercel.app` address; `FRONTEND_URL` must match it.
+
+**Data migration** — A migration that changes existing rows, not just the structure. *Here:* setting `payment_status` for old orders from their history (`2026_10_20_6c80859c1e35_…`).
 
 **Deadlock** — Two transactions each waiting for a lock the other holds. *Here:* avoided by locking variants in id
 order.
@@ -121,8 +135,12 @@ count for order lookups.
 **Delta (stock)** — A change (+10, −1) applied to the current value, instead of a new total. *Here:* admin stock
 adjustments.
 
+**DNS (Domain Name System)** — The internet's phone book: it turns a name like `kora.abdullahrasheed.tech` into a server address.
+
 **Docker Compose** — A tool that starts one or more containers from a YAML file. *Here:* `backend/docker-compose.yml`
 starts Postgres.
+
+**Double-submit cookie** — A CSRF defence: a readable cookie holds a random token that the page copies into a header; another site can't read the cookie, so it can't send the header. *Here:* `csrf_access_token` → `X-CSRF-TOKEN`.
 
 **Dry run** — Running a command to see what it *would* do, without saving any change. *Here:* `flask images check` runs the sync and then rolls back.
 
@@ -151,6 +169,8 @@ the `/api/products` response.
 
 **Fail fast** — Stop immediately with a clear error when something is wrong, instead of continuing and failing
 later in a confusing way. *Here:* `require_env()` in `config.py`.
+
+**Feature flag** — A setting that turns a feature on or off without changing code. *Here:* `NEXT_PUBLIC_ASSISTANT_ENABLED` switches the AI assistant's "Try it" button from "Coming soon".
 
 **Fixture (pytest)** — A function that prepares something a test needs. pytest passes it into tests by name.
 *Here:* `app`, `client`, `unreachable_db_client` in `backend/tests/conftest.py`.
@@ -204,6 +224,8 @@ prevented by filtering on `user_id` in `backend/app/accounts.py`.
 
 **Index (database)** — A sorted lookup structure that makes searching a column fast. *Here:* `ix_orders_email`,
 `ix_products_category`.
+
+**Infrastructure as code** — Hosting settings written in files that are reviewed and versioned like code. *Here:* `render.yaml`, `frontend/vercel.json`, `.github/workflows/expire-unpaid.yml`.
 
 **Integer cents** — Storing money as a whole number of cents (`2400` = $24.00) to avoid float rounding errors.
 *Here:* every `*_cents` column.
@@ -278,8 +300,12 @@ in `backend/app/extensions.py`.
 **Open redirect** — A link that sends users to any website after login, useful for phishing. *Here:* blocked by
 `safeNextPath()` in `frontend/lib/api.ts`.
 
+**Optimistic locking** — Instead of locking, each row has a version number; an update fails if someone else changed the row first, and you retry. *Here:* considered for stock, but we chose row locks.
+
 **ORM (Object-Relational Mapper)** — A library that lets you use Python classes instead of writing SQL by hand.
 *Here:* SQLAlchemy.
+
+**PaaS (Platform as a Service)** — A host that runs your code from git and manages servers, HTTPS and restarts for you. *Here:* Render (API) and Vercel (website).
 
 **Padding (images)** — Making an image a new shape by adding strips to its sides, instead of cutting parts off (cropping). *Here:* product photos are padded to 4:5 with the colour sampled from each edge.
 
@@ -295,7 +321,11 @@ in `backend/app/extensions.py`.
 
 **Payment provider** — The service that takes the payment. *Here:* `PAYMENT_PROVIDER=sandbox` or `stripe`.
 
+**Payment status** — Where the money is (`unpaid`, `paid`, `refunded`), kept separate from the order status (where the parcel is). *Here:* `orders.payment_status`; a COD order can be delivered and still unpaid.
+
 **PCI DSS** — Security rules for anyone who handles card data. Hosted checkout keeps us out of most of them.
+
+**Pessimistic locking** — Locking rows before changing them so others must wait (`SELECT … FOR UPDATE`). *Here:* variant rows in the payment webhook and COD checkout, always in id order.
 
 **PgBouncer** — A connection pooler in front of Postgres that lets many clients share a few real connections. *Here:* Neon's `-pooler` endpoint (transaction mode).
 
@@ -312,6 +342,8 @@ why login/logout use a full page load.
 
 **preload (next/image)** — Starts downloading an image from the page `<head>`. Use it for the LCP image only. Replaces
 the deprecated `priority` prop in Next.js 16.
+
+**Prepared statement** — A query the database compiles once and reuses. It lives on one connection, so it breaks behind a transaction-mode pooler. *Here:* turned off (`prepare_threshold=None`) on Neon's `-pooler` endpoint.
 
 **Primary key (PK)** — The column that uniquely identifies each row. *Here:* `id` in every table.
 
@@ -362,6 +394,8 @@ used by the returns page and, later, the AI agent.
 
 **Return request** — A customer's request to send items back for a refund or an exchange. *Here:* the
 `return_requests` table, status `requested`.
+
+**Reverse proxy** — A server that receives requests and passes them to another server behind it. *Here:* Next.js forwards `/api/*` to Flask; Render's load balancer sits in front of gunicorn.
 
 **Rewrite (Next.js)** — A rule that forwards a URL to another server without the browser knowing. *Here:* `/api/*` →
 Flask in `frontend/next.config.ts`.
@@ -467,6 +501,8 @@ part of a page.
 
 **Timing attack** — Learning a secret by measuring how long the server takes to answer. *Here:* prevented by
 constant-time comparison.
+
+**TLS (Transport Layer Security)** — The encryption behind HTTPS and secure database connections. *Here:* HTTPS everywhere, and `sslmode=require` between Render and Neon.
 
 **Transaction** — A group of database changes that succeed or fail together (all or nothing). *Here:* the whole seed
 is one transaction.

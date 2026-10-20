@@ -2,8 +2,8 @@
 
 A full-stack e-commerce store (Next.js, Flask, Postgres) built as the foundation for a multi-agent AI customer support system.
 
-**Live demo:** _coming soon_ <!-- TODO: https://kora-outfitters.vercel.app -->
-&nbsp;·&nbsp; **Docs:** [architecture](docs/ARCHITECTURE.md) · [phase guides](docs/guide/) · [deployment](DEPLOY.md)
+**Live demo:** [kora.abdullahrasheed.tech](https://kora.abdullahrasheed.tech)
+&nbsp;·&nbsp; **Docs:** [study guide](docs/STUDY_GUIDE.md) · [architecture](docs/ARCHITECTURE.md) · [phase guides](docs/guide/) · [deployment](DEPLOY.md)
 
 <!-- TODO: add a screenshot after deploying, e.g. docs/images/home.png
 ![Kora Outfitters homepage](docs/images/home.png)
@@ -91,7 +91,8 @@ flowchart LR
 
 **Accounts and checkout**
 - Sign up, log in, saved addresses and order history. Guest checkout works too.
-- Checkout with US, express and international shipping rules, through a hosted payment page.
+- Checkout with US, express and international shipping rules. Pay by **card** on a hosted payment page, or choose
+  **cash on delivery** (US addresses, phone required). Admins then record the cash when it's collected.
 
 **After the sale**
 - Order tracking by order number and email, with a status timeline, carrier and delivery estimate.
@@ -146,7 +147,8 @@ Everything is fictional, and no real payments are taken.
 
 | What | How |
 |---|---|
-| Pay | At checkout you're sent to the **sandbox payment page** (labelled "no real money"). Card `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined. Any future expiry, any CVC, any name |
+| Pay by card | At checkout you're sent to the **sandbox payment page** (labelled "no real money"). Card `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined, and every other number is refused. Any future expiry, any CVC, any name |
+| Cash on delivery | Choose **Cash on delivery** at checkout (US address) and enter any phone number. The order is confirmed straight away. Limited to 3 orders an hour per connection |
 | Customer account | Sign up with any email and a password of 10+ characters. Nothing is sent to that address |
 | Track an order | `/track` with order **KO-1002** and **daniel.brooks@example.com** (shipped), or **KO-1009** and **mia.garcia@example.com** (delayed) |
 | Return an item | `/returns` with **KO-1001** and **emily.carter@example.com** (eligible). Try **KO-1007** and **ava.thompson@example.com** to see a return refused because it's outside the 30-day window |
@@ -180,6 +182,7 @@ Checks: `cd backend && pytest` · `cd frontend && npm test && npm run lint && np
 
 | Document | What's in it |
 |---|---|
+| [docs/STUDY_GUIDE.md](docs/STUDY_GUIDE.md) | The whole project explained from start to finish: every concept, decision and bug, plus 60+ interview questions with answers |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | The whole system on one page: diagrams, data model, every API endpoint, security layers |
 | [docs/guide/](docs/guide/) | One guide per phase (00 setup → 07 deployment): what was built, design decisions and alternatives, what could go wrong, sequence diagrams |
 | [DEPLOY.md](DEPLOY.md) | Step-by-step deployment to Neon, Render and Vercel, with troubleshooting |
