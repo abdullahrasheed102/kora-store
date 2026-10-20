@@ -10,7 +10,9 @@ const backendUrl = (process.env.BACKEND_URL ?? "http://localhost:5000").replace(
 // prerendered static shell). Everything else is locked to our own origin.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // challenges.cloudflare.com: the Turnstile bot check on guest checkout (a script + an iframe).
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+  "frame-src https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'", // next/font and inline style attributes
   "img-src 'self' data: blob: https:", // data: blur placeholders; https: image URLs admins paste
   "font-src 'self'", // next/font serves the fonts from our own domain

@@ -78,6 +78,9 @@ hide. *Here:* `tests/test_returns.py`.
 **Business rules as code** — Turning written policy into small, named, tested functions. *Here:* the returns policy in
 `backend/app/returns.py`.
 
+**CAPTCHA** — A test that tells people and bots apart (the name means "Completely Automated Public Turing test to
+tell Computers and Humans Apart"). *Here:* Cloudflare **Turnstile** on guest checkout.
+
 **Cascade (ON DELETE CASCADE)** — When a parent row is deleted, its child rows are deleted too. *Here:* deleting an
 order deletes its items and events.
 
@@ -174,8 +177,8 @@ transaction covers both, so one can succeed while the other fails. *Here:* the r
 `selectinload(Product.variants)` in `backend/app/catalog.py`.
 
 **Email verification** — Proving that a person can read mail at an address, by sending a link only that inbox
-receives. *Here:* sign-up links and the guest "confirm your email" step. Customer emails go only to addresses in
-`verified_emails`.
+receives. *Here:* sign-up links (`/check-email`, `/verify-email`). Accounts get order emails only once confirmed;
+guests get theirs directly, protected by Turnstile and a per-address cap.
 
 **`.env` file** — A local file of environment variables, loaded automatically by `python-dotenv`. Never committed.
 *Here:* `backend/.env` (copied from `.env.example`).
@@ -199,6 +202,10 @@ the `/api/products` response.
 
 **Fail fast** — Stop immediately with a clear error when something is wrong, instead of continuing and failing
 later in a confusing way. *Here:* `require_env()` in `config.py`.
+
+**Fail open vs fail closed** — What a security check does when it can't run. Fail open lets the request through
+(keeps working, loses protection). Fail closed refuses it (safer, stricter). *Here:* guest checkout fails closed when
+Cloudflare can't be reached (`backend/app/turnstile.py`).
 
 **Feature flag** — A setting that turns a feature on or off without changing code. *Here:* `NEXT_PUBLIC_ASSISTANT_ENABLED` switches the AI assistant's "Try it" button from "Coming soon".
 
@@ -447,6 +454,9 @@ provider (`ResendSender` in `backend/app/mail/senders.py`).
 
 **REST** — An API style where URLs name resources and HTTP methods say what to do (GET reads).
 
+**Retry-After** — A response header that tells the client how many seconds to wait before trying again, sent with
+`429`. *Here:* the countdown on the `/check-email` page uses it.
+
 **Return request** — A customer's request to send items back for a refund or an exchange. *Here:* the
 `return_requests` table, status `requested`.
 
@@ -583,6 +593,10 @@ constant-time comparison.
 is one transaction.
 
 **TRUNCATE** — A fast SQL command that empties a table. *Here:* `flask seed --reset`.
+
+**Turnstile (Cloudflare)** — Cloudflare's free CAPTCHA alternative. A widget in the browser, usually invisible, gives
+a one-time token. Our server checks the token with Cloudflare's `siteverify` API using a secret key. *Here:* guest
+checkout (`frontend/components/checkout/turnstile-widget.tsx`, `backend/app/turnstile.py`).
 
 **UNIQUE constraint** — A rule that no two rows can have the same value in a column. *Here:* `users.email`,
 `products.slug`, `product_variants.sku`.

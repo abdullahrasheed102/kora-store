@@ -73,3 +73,9 @@ services:
         value: "80"
       - key: EMAIL_RECIPIENT_DAILY_CAP
         value: "10"
+      - key: EMAIL_GUEST_ORDER_DAILY_CAP
+        value: "2"
+      # --- Cloudflare Turnstile: the bot check on guest checkout (DEPLOY.md, step 10) ---
+      # The SECRET key (the site key goes on Vercel). The app refuses to start without it.
+      - key: TURNSTILE_SECRET_KEY
+        sync: false

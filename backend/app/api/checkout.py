@@ -14,7 +14,7 @@ from flask import Blueprint, current_app, request
 from flask.typing import ResponseReturnValue
 from flask_jwt_extended import get_current_user, jwt_required
 
-from app import checkout, payments, sandbox
+from app import checkout, payments, sandbox, turnstile
 from app.checkout import CheckoutBody, CodCheckoutBody
 from app.errors import APIError
 from app.extensions import db, limiter
@@ -29,7 +29,10 @@ bp = Blueprint("checkout", __name__)
 @jwt_required(optional=True)  # guests can check out; if logged in, CSRF is checked as usual
 def create_session() -> ResponseReturnValue:
     body = parse_json(CheckoutBody)
-    return checkout.create_checkout(db.session, body, get_current_user()), 201
+    user = get_current_user()
+    if user is None:  # guests only: a logged-in account is already a barrier to bots
+        turnstile.verify(body.turnstile_token, request.remote_addr)
+    return checkout.create_checkout(db.session, body, user), 201
 
 
 def _cod_phone_key() -> str:
@@ -48,7 +51,10 @@ def _cod_phone_key() -> str:
 @jwt_required(optional=True)
 def create_cod_order() -> ResponseReturnValue:
     body = parse_json(CodCheckoutBody)
-    return checkout.create_cod_order(db.session, body, get_current_user()), 201
+    user = get_current_user()
+    if user is None:
+        turnstile.verify(body.turnstile_token, request.remote_addr)
+    return checkout.create_cod_order(db.session, body, user), 201
 
 
 @bp.post("/stripe/webhook")

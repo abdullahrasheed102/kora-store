@@ -6,6 +6,7 @@ import { useId, useState } from "react";
 import { useCart } from "@/components/cart/cart-provider";
 import { CartTotals } from "@/components/cart/cart-totals";
 import { LinePhoto } from "@/components/cart/line-photo";
+import { TurnstileWidget } from "@/components/checkout/turnstile-widget";
 import { api, ApiError } from "@/lib/api";
 import { COUNTRY_NAMES, formatPrice, SHIPPING_LABELS } from "@/lib/format";
 import type { Address, AddressInput, Country, PaymentMethod, ShippingMethod, User } from "@/lib/types";
@@ -20,9 +21,16 @@ function methodsFor(country: Country): ShippingMethod[] {
   return country === "US" ? ["standard", "express"] : ["international"];
 }
 
-type Props = { user: User | null; addresses: Address[]; cancelled: boolean; declined: boolean };
+type Props = {
+  user: User | null;
+  addresses: Address[];
+  cancelled: boolean;
+  declined: boolean;
+  /** Set for guests only: they must pass Cloudflare Turnstile before ordering. */
+  turnstileSiteKey?: string | null;
+};
 
-export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
+export function CheckoutForm({ user, addresses, cancelled, declined, turnstileSiteKey }: Props) {
   const { lines, quote, isUpdating, count, shippingMethod, setShippingMethod } = useCart();
   const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
   const [addressChoice, setAddressChoice] = useState<string>(defaultAddress ? String(defaultAddress.id) : NEW_ADDRESS);
@@ -30,6 +38,9 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [botToken, setBotToken] = useState<string | null>(null);
+  const [botReset, setBotReset] = useState(0);
+  const needsBotCheck = !user && Boolean(turnstileSiteKey);
   const phoneId = useId();
 
   const chooseCountry = (next: Country) => {
@@ -78,6 +89,7 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
         shipping_method: shippingMethod,
         items: lines.map((line) => ({ variant_id: line.variantId, quantity: line.quantity })),
         save_address: !saved && form.get("save_address") === "on",
+        turnstile_token: needsBotCheck ? (botToken ?? undefined) : undefined,
       };
       // Card: leave for the hosted payment page (card details never touch our servers).
       // Cash on delivery: the order is placed now, and we go straight to the thank-you page.
@@ -86,6 +98,8 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
       window.location.assign(checkout_url);
     } catch (caught) {
       setSubmitting(false);
+      // A token works only once, and the API may have used it before refusing the order.
+      if (needsBotCheck) setBotReset((count) => count + 1);
       const codLimit = paymentMethod === "cod" && caught instanceof ApiError && caught.status === 429;
       // COD orders are limited per hour (fake orders would hold stock), so "wait a minute" would be wrong.
       setError(codLimit ? "Too many cash on delivery orders from this connection. Please try later, or pay by card." : messageFor(caught));
@@ -323,9 +337,12 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
             {error}
           </p>
         )}
+        {needsBotCheck && turnstileSiteKey && (
+          <TurnstileWidget siteKey={turnstileSiteKey} onToken={setBotToken} resetSignal={botReset} />
+        )}
         <button
           type="submit"
-          disabled={submitting || isUpdating || issues || !quote}
+          disabled={submitting || isUpdating || issues || !quote || (needsBotCheck && !botToken)}
           className="h-14 w-full rounded-full bg-ink text-sm font-medium text-paper transition hover:bg-accent disabled:cursor-not-allowed disabled:bg-ink/30"
         >
           {buttonLabel(paymentMethod, submitting, quote?.total_cents)}
@@ -356,6 +373,7 @@ function buttonLabel(method: PaymentMethod, submitting: boolean, totalCents: num
 
 function messageFor(error: unknown): string {
   if (error instanceof ApiError) {
+    if (error.code.startsWith("bot_check")) return `${error.message} The check has been reset above.`;
     if (error.code === "cart_changed") return "Some items in your bag changed. Please review your bag and try again.";
     if (error.code === "payments_not_configured") return "Payments aren't set up on this server yet.";
     if (error.status === 429) return "Too many attempts. Please wait a minute and try again.";

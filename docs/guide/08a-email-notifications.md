@@ -14,23 +14,32 @@
   (`.github/workflows/email-outbox.yml`). It sends anything that failed, with **backoff** and a maximum of 6 attempts.
 - **Three email providers**, chosen by `EMAIL_PROVIDER`: `resend` (production, an HTTP API), `mailpit` (a fake inbox
   on your laptop) and `log` (tests: send nothing).
-- **Ten email types**, each with a branded HTML version and a plain-text version: account verification, guest
-  "confirm your email", order confirmation, dispatched, out for delivery / delivered / delayed, cancelled (with
-  refund details), return approved, return rejected, refund issued, and a new-ticket alert for the store owner.
-- **Email verification.** Sign-up sends a link. A guest order first sends one short "is this your email?" message.
-  Order emails go only to addresses that clicked such a link (table **`verified_emails`**).
-- **Abuse protection**: reserved domains (`example.com`, `kora.test`, …) are never emailed, and there is a daily cap
-  per recipient and a global daily cap.
+- **Nine email types**, each with a branded HTML version and a plain-text version: account verification, order
+  confirmation, dispatched, out for delivery / delivered / delayed, cancelled (with refund details), return
+  approved, return rejected, refund issued, and a new-ticket alert for the store owner.
+- **Two rules for who gets order emails:**
+  - **Accounts** confirm their address first: sign-up sends a link, and until it's clicked the account can shop
+    but gets no order emails (table **`verified_emails`**, column `users.email_verified_at`).
+  - **Guests** get their confirmation and status emails directly, with no confirmation step. What stops abuse
+    instead: **Cloudflare Turnstile** on guest checkout, **at most 2 guest-order confirmations per address per
+    day**, the global daily cap, and never emailing reserved domains.
+- **Abuse protection** for everyone: reserved domains (`example.com`, `kora.test`, …) are never emailed, plus a daily
+  cap per recipient and a global daily cap.
 - **Reply-To**: customer emails have `Reply-To: ADMIN_NOTIFY_EMAIL`, so a customer who presses "Reply" reaches a
   person. Ticket alerts have `Reply-To: <the customer>`, so the owner can answer straight from the alert.
 - Two commands: `flask outbox process` (run the retry job now) and `flask email preview <name|all>` (render any
   email to an HTML file).
-- 82 new tests (427 in total).
+- 98 new tests (443 in total).
 
 **Frontend**
-- `/verify-email`: the page the email links open. It confirms with a button click (see "Why a button?" below).
-- A "Please confirm your email" banner on `/account`, with "Send the link again".
-- A line on the order success page: "Your confirmation is on its way to …".
+- After sign-up (already logged in): **`/check-email`**. It shows the address, a **Resend link** button with a
+  60-second countdown, and **"Wrong email? Change it"** (new address + password).
+- `/verify-email`: the page the email links open. It confirms with a button click (see "Why a button?" below),
+  then goes to `/account?email_confirmed=1`, which shows "Email confirmed".
+- A "Please confirm your email" banner on `/account` until then, with "Send the link again" and "Change it".
+- The **Turnstile widget** on checkout, for guests only. The order button stays disabled until it passes.
+- A line on the order success page: "Your confirmation is on its way to …", or, for an unconfirmed account,
+  "Confirm your email to get your order confirmation".
 
 **Local tools**
 - **Mailpit** in `backend/docker-compose.yml`: a mail server that catches every email and shows it in a web inbox
@@ -89,6 +98,17 @@ to trust a message:
 Without these, our emails go to spam or are rejected. Resend gives us the SPF and DKIM records to add (DEPLOY.md,
 step 9.2).
 
+**CAPTCHA and Cloudflare Turnstile.** A CAPTCHA is a test that tells people and bots apart. Turnstile is
+Cloudflare's free version. Usually it's invisible: it checks the browser quietly and only sometimes asks for a
+click. When it passes, the widget gives the page a **token**. Our server sends that token, with our secret key, to
+Cloudflare's `siteverify` API, which answers "real" or "not". A token works **once** and expires after 5 minutes,
+so a bot can't solve one and reuse it.
+
+**Fail open vs fail closed.** What a security check does when it can't run (here: Cloudflare is unreachable). *Fail
+open* lets the request through, so the store keeps working but the protection silently disappears. *Fail closed*
+refuses it, so it's safer but stricter. Our guest checkout **fails closed**, because an attacker who could make the
+check fail would otherwise switch the protection off.
+
 **Deliverability.** The chance that an email reaches the inbox and not spam. It depends on authentication
 (above), the domain's **reputation** (its history of sending wanted mail), having a plain-text version, few
 bounces, and few spam complaints. That is why we use a **subdomain** (`kora.abdullahrasheed.tech`): if the demo
@@ -119,7 +139,7 @@ Where each trigger is called:
 
 | Email | Called from |
 |---|---|
-| Order confirmation (or "confirm your email") | `checkout._fulfil` (card paid, `backend/app/checkout.py:359`) and `create_cod_order` (`:218`) |
+| Order confirmation | `checkout._fulfil` (card paid, `backend/app/checkout.py:359`) and `create_cod_order` (`:218`) |
 | Dispatched / out for delivery / delivered / delayed | `admin.change_order_status` (`backend/app/admin.py:397`) |
 | Cancelled + refund | `admin.change_order_status`, when a *confirmed* order is cancelled (`:395`) |
 | Return approved / rejected / refund issued | `admin.change_return_status` (`:543`, `:552`, `:554`) |
@@ -231,31 +251,94 @@ the process keeps a small flag in memory, `_maybe_due`: "might anything be waiti
 
 When the flag is `False`, the endpoint answers `{"skipped": true}` without touching the database.
 
-### 7. Verification: `backend/app/mail/verification.py`
+### 7. Account verification: `backend/app/mail/verification.py`
 
 ```python
-def make_token(email: str, order_id: int | None = None) -> str:     # :33
-    return _serializer().dumps({"email": normalize_email(email), "order_id": order_id})
+def make_token(email: str) -> str:
+    return _serializer().dumps({"email": normalize_email(email)})
 ```
 
 The token is **signed** with `SECRET_KEY` by `itsdangerous` (Flask's own signing library). Nobody can make a valid
-one without the key. It includes a timestamp, so `read_token` (`:42`) refuses links older than 7 days. A **salt**
+one without the key. It includes a timestamp, so `read_token` refuses links older than 7 days. A **salt**
 (`"kora-email-verification"`) keeps these tokens separate from anything else signed with the same key. Because
 the token checks itself, we need no table of issued tokens.
 
-The flow for a guest order (`notifications.order_placed`, `backend/app/notifications.py:56`):
+The sign-up journey:
 
-1. The address isn't verified, so we send only "Confirm your email to get updates on order KO-1013". It contains
-   no items, address or totals. Someone who typed a stranger's email gains nothing.
-2. The customer clicks → `/verify-email?token=…` → **Confirm my email** → `POST /api/email/verify`.
-3. `confirm_email()` (`:67`) adds the address to `verified_emails` and enqueues the order confirmation with
-   the **same** key `order-confirmation:<id>`. Clicking twice still sends it once.
+1. `POST /api/auth/signup` creates the account, logs it in (the session cookie), and writes the "Confirm your
+   email" outbox row, all in one transaction (`backend/app/api/auth.py`).
+2. The browser goes to **`/check-email`**: "We sent a link to maya@…". **Resend link** calls
+   `POST /api/email/resend-verification`, which is limited to **1 a minute and 5 an hour**. The button counts down
+   60 seconds. If the limit is hit anyway, the API's `429` carries a `Retry-After` header, and the countdown uses that
+   number, so the page and the server always agree.
+3. **"Wrong email? Change it"** → `POST /api/email/change` with the new address **and the password**
+   (`accounts.change_unconfirmed_email`). It only works while the address is unconfirmed: changing a *confirmed*
+   address safely needs a confirmation of the new address before switching, which is a bigger feature. The
+   password means a stolen session cookie alone can't move the account to an attacker's address.
+4. The customer clicks the link → `/verify-email?token=…` → **Confirm my email** → `POST /api/email/verify`. The
+   answer includes `signed_in`: is this browser logged in as the owner of the address?
+   - yes → full page load to `/account?email_confirmed=1` ("Email confirmed")
+   - no (opened on a phone, say) → "Thank you, … is confirmed" with a **Log in** button. After login the
+     customer lands on the same page, because `proxy.ts` now keeps the query string in `?next=`.
+
+Until step 4, the account can browse and order normally. Its order emails are written as `suppressed /
+unverified`, so support can still see them.
 
 **Why a button, not "confirm on page load"?** Mail scanners (in Outlook, corporate filters) open every link in an
 email to check it for viruses. If opening the link confirmed the address, the scanner would confirm it, not the
 person. Scanners don't click buttons, and the confirmation is a `POST`.
 
-### 8. Templates: `backend/app/mail/templates/`
+### 8. Guests: no confirmation step, and what stops abuse instead
+
+A guest typed an email address to get a receipt. Asking them to click a link before we send it is friction at
+the worst moment, and many real customers would never see their confirmation. So guests get their order emails
+**directly** (`notifications.order_placed`, `backend/app/notifications.py`).
+
+The risk this creates: anyone could type a *stranger's* address, and our store would email them. Four layers
+make that useless to an attacker:
+
+```mermaid
+flowchart LR
+    A[Guest order] --> T{"1. Turnstile<br/>(bots stopped)"}
+    T -- token OK --> R{"COD rate limits<br/>(phase 4)"}
+    R --> O[Order saved]
+    O --> B{"2. Reserved domain?"}
+    B -- "example.com, .test…" --> S1[suppressed]
+    B -- no --> G{"3. 2 guest confirmations<br/>to this address today?"}
+    G -- yes --> S2[suppressed: guest_daily_cap]
+    G -- no --> C{"4. Global daily cap"}
+    C -- over --> W[waits until tomorrow]
+    C -- under --> E[sent]
+```
+
+1. **Turnstile** (`backend/app/turnstile.py`). Guest checkout (card and COD) needs a token, checked with Cloudflare
+   *before* the order is created:
+   ```python
+   if user is None:  # guests only: a logged-in account is already a barrier to bots
+       turnstile.verify(body.turnstile_token, request.remote_addr)
+   ```
+   We also send the client IP (Cloudflare uses it as an extra signal) and check `action == "checkout"`, so a token
+   solved on some other page can't be used to order. If Cloudflare can't be reached, guest orders **fail closed**
+   with a 503 "try again in a moment".
+2. **Reserved domains** are never emailed (unchanged).
+3. **The guest cap: at most 2 guest-order confirmations per address per day** (`EMAIL_GUEST_ORDER_DAILY_CAP`).
+   It is counted when the email is *written*, inside the order's transaction, and a Postgres **advisory lock on
+   the address** makes two simultaneous orders take turns, so both can't see "1 so far":
+   ```python
+   session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"guest-email-cap:{email}"))))
+   ```
+   The third order still goes through (it's a real order), but its confirmation is `suppressed / guest_daily_cap`.
+   Its later status emails are suppressed too. Status emails for the *first two* orders still go out, because the
+   admin triggers those, not the attacker.
+4. **The global cap** (80 a day) is the last line: whatever happens, the store can't send more than that.
+
+So the worst an attacker can do to one stranger is 2 order confirmations a day, and only after solving Turnstile
+and passing the COD rate limits. Account holders aren't affected by the guest cap: their address is confirmed.
+
+**Links:** account holders' emails link to `/account/orders/KO-…`. Guests have no account, so their emails link to
+the public tracking page, `/track?order=KO-…` (`order_context()` in `app/notifications.py`).
+
+### 9. Templates: `backend/app/mail/templates/`
 
 Jinja templates: `base.html` + `base.txt` (shared layout), `_macros.html` (button, order summary, notes), then one
 `.html` and one `.txt` per email. Email apps are not browsers: Gmail and Outlook ignore much of CSS, so the layout
@@ -281,12 +364,18 @@ sequenceDiagram
     participant M as Email provider<br/>(Resend / Mailpit)
     participant G as GitHub Actions
 
-    S->>N: Place order (cash on delivery)
-    N->>F: POST /api/checkout/cod
+    participant CF as Cloudflare<br/>Turnstile
+
+    S->>CF: the checkout widget runs its check
+    CF-->>S: one-time token
+    S->>N: Place order as a guest (cash on delivery) + token
+    N->>F: POST /api/checkout/cod {…, turnstile_token}
+    F->>CF: siteverify(secret, token, client IP)
+    CF-->>F: success, action "checkout"
     F->>DB: BEGIN
     F->>DB: lock variants, take stock, INSERT order + items + event
-    F->>DB: is the email verified? (verified_emails)
-    F->>DB: INSERT email_outbox ("confirm your email", pending) ON CONFLICT DO NOTHING
+    F->>DB: advisory lock on the address · guest confirmations today < 2?
+    F->>DB: INSERT email_outbox (order confirmation, pending) ON CONFLICT DO NOTHING
     F->>DB: COMMIT
     Note over F: after_commit hook starts a thread
     F-->>N: 201 {order_number, checkout_url}
@@ -295,10 +384,6 @@ sequenceDiagram
     F->>M: send (Idempotency-Key)
     M-->>F: 200 {id}
     F->>DB: status = sent
-    S->>N: clicks the link, then "Confirm my email"
-    N->>F: POST /api/email/verify {token}
-    F->>DB: INSERT verified_emails, INSERT email_outbox (order confirmation), COMMIT
-    F->>M: send the order confirmation
     Note over G,F: If any send failed: every 5 minutes<br/>POST /api/email/outbox/process retries it
 ```
 
@@ -314,7 +399,12 @@ sequenceDiagram
 | **httpx** directly | Resend's Python SDK | Full control of the timeout and the idempotency header. `httpx.MockTransport` makes tests easy. One small, well-known dependency. |
 | Render the email **when the row is written** | Store only the data and render at send time | A retry sends what was true at the moment of the change. The sender stays simple. Downside: fixing a template typo doesn't fix emails already queued. |
 | **Signed tokens** (itsdangerous) for verification | A random token stored in a table | No table and no clean-up job. Downside: a token can't be revoked before it expires (fine for "confirm your email"). |
-| **Verified addresses only** for customer emails | Email whatever address was typed at checkout | Anyone can type any address, so a public demo store could be used to send mail to strangers. Verification is what real email services require. |
+| **Accounts** confirm their email before getting order emails | Email any account straight away | Sign-up is cheap to automate, and an account keeps getting emails for its whole life. One click at sign-up, with "change it" for typos, is a small price. |
+| **Guests skip** the confirmation step | Ask guests to confirm too (our first version) | A guest wants a receipt *now*; a "confirm first" email loses real customers' confirmations. The abuse risk is handled by Turnstile + the guest cap instead. Most real shops do the same. |
+| **Cloudflare Turnstile** | Google reCAPTCHA; hCaptcha; no check, only rate limits | Free, usually invisible (no picture puzzles), no Google tracking, simple server check. Rate limits alone don't stop a bot that rotates IPs. |
+| Turnstile **fails closed** | Fail open (let guests order if Cloudflare is down) | Failing open would let an attacker who breaks the check switch the protection off. Logged-in customers aren't affected. |
+| Guest cap counted **when the email is written**, with an advisory lock per address | Count when sending; no lock | Written-time counting decides inside the order's transaction, so the decision is recorded with the order. The lock makes two simultaneous orders take turns. |
+| **Password required** to change an unconfirmed email | Just the session cookie | A stolen cookie alone can't move the account to an attacker's mailbox. |
 | Suppressed rows are **kept** | Don't write a row when we won't send | Support (and later the AI agent) can see what we didn't send and why: `blocked_domain`, `unverified`, `recipient_daily_cap`. |
 | **Mailpit** locally | Print emails to the console; a real test inbox | You see the real HTML and headers (Reply-To, multipart) in a real inbox UI, and nothing can reach a real person. |
 
@@ -326,8 +416,11 @@ sequenceDiagram
 | The server crashes between "Resend accepted" and "save sent" | The lease runs out and the job resends with the **same** Idempotency-Key. Resend recognises it and doesn't deliver a second copy (Resend keeps keys for 24 hours). |
 | Render restarts while a thread is sending | Same as above: the lease protects the row. Python also waits for non-daemon threads before exiting. |
 | The domain isn't verified in Resend | Resend answers 403. That's a permanent error, so the row becomes `failed` with the message in `last_error`. Fix the DNS, then requeue (see DEPLOY.md troubleshooting). |
-| Someone types a stranger's address at checkout | That person gets one minimal "is this your email?" message, and nothing more unless they click. Per-recipient caps limit repeats. |
-| A bot creates thousands of orders | The COD rate limits (phase 4), the per-recipient cap and the global cap. The worst case is 80 emails in a day, and order emails just wait for tomorrow. |
+| Someone types a stranger's address at guest checkout | They must pass Turnstile and the COD rate limits, and the stranger gets at most 2 order confirmations a day. |
+| A bot tries to place thousands of guest orders | Turnstile stops it before any order exists. If it somehow got through: the rate limits, the guest cap, and the global cap (at most 80 emails a day overall). |
+| Cloudflare is down | Guest checkout answers 503 "try again in a moment" (fails closed). Logged-in customers can still order. |
+| A shopper's Turnstile token expires (5 minutes) or was used by a failed attempt | The widget gets a fresh token: it resets after every failed order attempt, and the button stays disabled until it has one. |
+| Someone signs up with a typo in their email | "Wrong email? Change it" on `/check-email` (password required), and a new link goes to the fixed address. |
 | An admin's change fails halfway | The transaction rolls back, and the outbox row goes with it. No email (tested). |
 | Emails land in spam | Check SPF/DKIM/DMARC in Resend. A brand-new domain has no reputation, so the first emails may land in spam anyway. |
 | We change a template | Already-queued rows keep the old text (rendered at write time). New emails use the new template. |
@@ -361,22 +454,47 @@ Open http://localhost:8025 (Mailpit) next to http://localhost:3000 (the store). 
 **normal-looking domain** below, for example `abdullah.test1@gmail.com`. Mailpit catches it, so nothing is sent
 to Gmail. Don't use `@example.com` or `@kora.test`: those domains are never emailed, by design.
 
-**1. Sign up with a new email.** Go to `/signup`, use `abdullah.test1@gmail.com`.
-- Mailpit: **"Confirm your email for Kora Outfitters"**, to that address, Reply-To `owner@kora.local`.
-- `/account` shows the sage "Please confirm your email" banner.
-- Click **Confirm my email** in the email → `/verify-email` → the button → "… is confirmed". Reload `/account`:
-  the banner is gone.
+Locally, Turnstile uses Cloudflare's **test keys** (`TURNSTILE_SITE_KEY` in `frontend/.env.local`,
+`TURNSTILE_SECRET_KEY` in `backend/.env`). The widget shows a "Testing only" box that always passes, and the
+backend still really calls Cloudflare to check the token.
 
-**2. COD order while logged in** (verified address). Add something to the bag → checkout → **Cash on delivery**
-(US address, phone number).
+**1. Sign up, the wrong address first.** Go to `/signup` and use `abdullah.test1@gmial.com` (a typo).
+- You're logged in and land on **`/check-email`**: "We sent a link to abdullah.test1@gmial.com". The **Resend
+  link** button counts down from 60.
+- Mailpit: **"Confirm your email for Kora Outfitters"** to the typo address.
+- Click **Wrong email? Change it** → `abdullah.test1@gmail.com` + your password → "Updated. We sent a new link…".
+  Mailpit: a second "Confirm your email", now to the right address. (A wrong password says "That password isn't
+  right.")
+- When the countdown ends, click **Resend link**. A third email arrives and the countdown restarts. Click again at
+  once: the button is disabled. (The API allows 1 a minute.)
+- Open `/account` before confirming: the sage "Please confirm your email" banner is there.
+
+**2. Confirm, then order while logged in.** In Mailpit, open the newest link → **Confirm my email** → you land on
+`/account` with **"Email confirmed."** and no banner. Then add something to the bag → checkout. No Turnstile box
+appears for logged-in customers → **Cash on delivery** (US address, phone number).
 - Mailpit: **"Your order KO-10xx is confirmed"** with the items, totals, address, the "have $X ready in cash"
-  note, and a "Track your order" button.
+  note, and a button that links to **`/account/orders/KO-10xx`**.
 
-**3. Card order as a guest** (unverified address). Log out. Checkout with a new address, e.g.
-`abdullah.test2@gmail.com` → card → sandbox page → `4242 4242 4242 4242`.
-- Mailpit: only **"Confirm your email to get updates on order KO-10xx"**, with no items or address in it.
-- Click **Yes, send me updates** → **Confirm my email**. Mailpit: **"Your order KO-10xx is confirmed"**.
-- Click the same link again and confirm again: no second confirmation email.
+**3. Card order as a guest, no confirmation step.** Log out. Checkout with `abdullah.test2@gmail.com`.
+- A **Turnstile** box appears above the Pay button, and the button is disabled until it shows a tick.
+- Card → sandbox page → `4242 4242 4242 4242` → thank-you page: "Your confirmation is on its way to …".
+- Mailpit: **"Your order KO-10xx is confirmed"** straight away. Its button links to **`/track?order=KO-10xx`**,
+  not the account page.
+
+**3b. The guest cap.** Still logged out, place **two more** guest **card** orders with the same
+`abdullah.test2@gmail.com`. (Card, because cash on delivery allows only 3 orders an hour per IP. Restart
+`flask run` to reset that limit if you hit it.)
+- The first of the two gets a confirmation (2 for this address today). The second order works, but **no email**
+  arrives. In the database it's `suppressed | guest_daily_cap` (see the SQL in step 8).
+
+**3c. Turnstile really is checked.** Stop the frontend, set `TURNSTILE_SITE_KEY=2x00000000000000000000AB` in
+`frontend/.env.local` (Cloudflare's "always fails" test key), start it again and try a guest checkout: the widget
+fails and the button stays disabled. Or send an order with no token at all:
+```bash
+curl -s -X POST http://localhost:5000/api/checkout/cod -H 'Content-Type: application/json' -d '{}' ; echo
+# → validation error first; with a full body and no token: {"error":{"code":"bot_check_required",...}}
+```
+Put `1x00000000000000000000AA` back afterwards.
 
 **4. Support ticket.** `/contact` → send a message.
 - Mailpit: **"New support ticket #N: …"** to `owner@kora.local`. Its Reply-To is the customer's address. In
@@ -390,8 +508,8 @@ to Gmail. Don't use `@example.com` or `@kora.test`: those domains are never emai
 
 **6. Cancel from admin.** Place one more COD order (as in step 2), then Admin → that order → **Cancelled** with a note.
 - Mailpit: **"Your order KO-10xx has been cancelled"**: "You chose cash on delivery … nothing to refund".
-- For a **card** order from step 3 (it's `processing`): cancelling says **"We've refunded $X to your original
-  payment method."**
+- For the guest **card** order from step 3 (it's `processing`): cancelling says **"We've refunded $X to your
+  original payment method."**
 
 **7. Return → approve → refund.** As the customer from step 1, go to `/returns` with the delivered order from step 5 → start a
 return. (Nothing is emailed yet: a customer's own request isn't in the plan's table.) Then Admin → Returns:
@@ -463,7 +581,8 @@ xdg-open email-previews/order_dispatched.html
 > pattern**: the email is written as a row in the *same* database transaction as the order change. Either both are
 > saved or neither. After the commit, a SQLAlchemy hook sends it in a background thread. A GitHub Actions job
 > retries failures every 5 minutes, with exponential backoff, leases for crashed senders, and a max attempt count.
-> Duplicates are prevented twice: a unique idempotency key in our table, and the same key sent to Resend's API. And
-> because it's a public demo where anyone can type any email, customer emails only go to verified addresses, never
-> to reserved domains, under per-recipient and global daily caps. In production it uses Resend over HTTP because
-> Render blocks SMTP, with SPF and DKIM on a subdomain for deliverability. Locally, everything goes to Mailpit."
+> Duplicates are prevented twice: a unique idempotency key in our table, and the same key sent to Resend's API.
+> Accounts confirm their email once at sign-up. Guests get their receipt directly, because a confirm-first step loses
+> real customers. Instead, guest checkout needs a Cloudflare Turnstile token verified on the server, and one address
+> gets at most two guest confirmations a day, under a global cap, never to reserved domains. In production it uses
+> Resend over HTTP because Render blocks SMTP, with SPF and DKIM on a subdomain. Locally, everything goes to Mailpit."

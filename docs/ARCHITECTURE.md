@@ -18,6 +18,7 @@ between them. It is updated after every phase.
 | Email outbox | The `email_outbox` table: every email is written in the same transaction as the change that causes it, sent right after the commit, and retried by a job | Flask + Postgres | ✅ (8A) |
 | Email provider | `EMAIL_PROVIDER`: **Resend** (HTTP API) in production, **Mailpit** (a fake inbox in Docker, http://localhost:8025) locally, `log` in tests | Resend's cloud / Docker | ✅ (8A) |
 | Email retry job | Calls `POST /api/email/outbox/process` every 5 minutes (`.github/workflows/email-outbox.yml`) | GitHub Actions | ✅ (8A) |
+| Bot check | **Cloudflare Turnstile** on guest checkout: a widget in the page gives a one-time token; Flask verifies it with Cloudflare before creating the order | Cloudflare | ✅ (8A) |
 | AI assistants (Kora Support + Kora Copilot) | LangGraph agents that answer customers and help the admin, by calling the service layer through permission-checked tools. They run **inside** the Flask service (one free Render service), see [AI_PLAN.md](AI_PLAN.md) | Render (in Flask) | *planned (8B–8D)* |
 | Groq / Gemini | Large language models (LLMs) the agent uses | Their clouds | *planned (Phase 8)* |
 
@@ -230,8 +231,8 @@ stateDiagram-v2
 | `POST /api/auth/signup`, `/login`, `/logout` · `GET /api/auth/me` | Accounts and sessions (rate limited) | 3 |
 | `GET/POST /api/account/addresses` · `PUT/DELETE /api/account/addresses/<id>` | Saved addresses 🔒 | 3 |
 | `GET /api/account/orders` · `GET /api/account/orders/<number>` | Your own orders 🔒 | 3 |
-| `POST /api/checkout/session` | Card: pending order + Stripe Checkout Session → `{checkout_url}` (guests or logged in) | 4 |
-| `POST /api/checkout/cod` | Cash on delivery: order confirmed at once (`processing` + `unpaid`), stock taken now, phone required, US only. Rate limited: 3/h and 10/day per IP, 3/day per phone | 4 |
+| `POST /api/checkout/session` | Card: pending order + Stripe Checkout Session → `{checkout_url}` (guests or logged in; guests need a Turnstile token, 8A) | 4 |
+| `POST /api/checkout/cod` | Cash on delivery: order confirmed at once (`processing` + `unpaid`), stock taken now, phone required, US only. Rate limited: 3/h and 10/day per IP, 3/day per phone. Guests need a Turnstile token (8A) | 4 |
 | `POST /api/stripe/webhook` | Stripe events, verified by HMAC signature (only when `PAYMENT_PROVIDER=stripe`) | 4 |
 | `POST /api/sandbox/webhook` | Sandbox events, same verification (only when `PAYMENT_PROVIDER=sandbox`) | 4 |
 | `GET /api/sandbox/sessions/<id>` · `POST /api/sandbox/sessions/<id>/pay` | The sandbox payment page | 4 |
@@ -241,7 +242,8 @@ stateDiagram-v2
 | `POST /api/returns` | Start a refund or exchange; rules re-checked, order row locked | 5 |
 | `POST /api/support/contact` | Contact form → support ticket (rate limited) | 6 |
 | `POST /api/email/verify` | `{token}` from a "confirm your email" link → the address is verified (and an order's confirmation is sent). Rate limited | 8A |
-| `POST /api/email/resend-verification` | Send the account's verification link again 🔒 (3/hour) | 8A |
+| `POST /api/email/resend-verification` | Send the account's verification link again 🔒 (1/minute, 5/hour; `429` carries `Retry-After`) | 8A |
+| `POST /api/email/change` | `{email, password}`: fix the address of an **unconfirmed** account, and send a new link 🔒 | 8A |
 | `POST /api/email/outbox/process` | The retry job. `Authorization: Bearer OUTBOX_CRON_SECRET`; 404 when no secret is configured | 8A |
 | `/api/admin/*` (16 routes, incl. `POST /api/admin/orders/<n>/cash-collected`) | Stats, products (incl. `tags`), variants, orders, returns, tickets, policies (incl. `summary`). 🛡 admin role on every route | 6 |
 
@@ -293,9 +295,9 @@ sequenceDiagram
     end
 ```
 
-Customer emails go only to **verified** addresses (a sign-up link, or a one-time "confirm your email" step
-after a guest order), never to reserved domains (`example.com`, `kora.test`, …), and within per-recipient and
-global daily caps. Details: [guide/08a-email-notifications.md](guide/08a-email-notifications.md).
+Accounts get order emails once they've confirmed their address (a sign-up link). Guests get theirs directly;
+guest checkout is protected by Cloudflare Turnstile and a cap of 2 guest confirmations per address per day. No
+email ever goes to reserved domains (`example.com`, `kora.test`, …), and per-recipient and global daily caps apply. Details: [guide/08a-email-notifications.md](guide/08a-email-notifications.md).
 
 ## Sessions and security layers
 

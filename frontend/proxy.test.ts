@@ -36,3 +36,12 @@ test("no session cookie: sent to login, remembering the page", () => {
   const response = visit("/account/addresses");
   assert.equal(response.headers.get("location"), "http://localhost:3000/login?next=%2Faccount%2Faddresses");
 });
+
+test("the remembered page keeps its query string", () => {
+  const response = visit("/account?email_confirmed=1");
+  assert.equal(response.headers.get("location"), "http://localhost:3000/login?next=%2Faccount%3Femail_confirmed%3D1");
+});
+
+test("check-email needs a session too", () => {
+  assert.equal(visit("/check-email").headers.get("location"), "http://localhost:3000/login?next=%2Fcheck-email");
+});

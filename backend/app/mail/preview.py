@@ -92,10 +92,6 @@ def _order(order: Order) -> dict[str, Any]:
 # Preview name -> (template kind, function that builds its data).
 PREVIEWS: dict[str, tuple[str, Callable[[], dict[str, Any]]]] = {
     "verify_account": ("verify_account", lambda: {"name": "Maya", "verify_url": verify_url(make_token(PREVIEW_EMAIL))}),
-    "confirm_order_email": (
-        "confirm_order_email",
-        lambda: {"order_number": "KO-1013", "verify_url": verify_url(make_token(PREVIEW_EMAIL, 1013))},
-    ),
     "order_confirmation": ("order_confirmation", lambda: _order(sample_order())),
     "order_confirmation_cod": ("order_confirmation", lambda: _order(sample_order(cod=True))),
     "order_dispatched": (

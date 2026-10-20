@@ -20,7 +20,7 @@ Expected delivery: {{ shipment.estimated_delivery }}
 Cash on delivery: please have {{ order.total }} ready for the courier.
 {% endif %}
 
-Track your parcel: {{ order.track_url }}
+Track your parcel: {{ order.url }}
 
 {{ ui.order_summary(order) }}
 {% endblock %}

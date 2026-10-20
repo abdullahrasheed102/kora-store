@@ -770,13 +770,13 @@ keeps the daily-cap count exact.
 
 ### 5. A public demo store can be used to spam strangers. What did you do about it?
 
-**Answer:** Anyone can type any email at checkout or sign-up, so customer emails only go to **verified** addresses.
-Sign-up sends a signed link (itsdangerous, salted, expires in 7 days). A guest order first sends a single minimal
-"is this your email?" message with no order details. Only after a click does the confirmation go out. Reserved
-domains like `example.com` and `.test` are never emailed, which also covers all our seed data. And there are caps:
-per recipient per day (over it → dropped, since it looks like abuse) and global per day, under Resend's free tier
-(over it → postponed to tomorrow, since that's our budget problem, not the customer's). Suppressed emails are still
-recorded with a reason, so support can see what wasn't sent.
+**Answer:** Anyone can type any email at checkout or sign-up, so I use different rules for accounts and guests.
+**Accounts** confirm their address once, with a signed link (itsdangerous, salted, 7-day expiry). Until then they
+can shop, but their order emails are recorded as suppressed. **Guests** get their receipt directly, and abuse is
+stopped by layers instead: Cloudflare Turnstile on guest checkout, so bots can't place orders; at most two
+guest-order confirmations per address per day; a global daily cap under Resend's free tier; and reserved domains
+like `example.com` are never emailed. Every suppressed email is still recorded with a reason, so support can see
+what wasn't sent and why.
 
 ### 6. What are SPF, DKIM and DMARC, and why do they matter for your project?
 
@@ -804,3 +804,46 @@ be waiting?". It's set after any commit that wrote an outbox row, cleared by a r
 starts as true after every restart, so a crash is still covered. When it's false, the endpoint answers without
 touching the database. That's safe because we run one process. With many instances, I'd move the flag into the
 database or use a real scheduler.
+
+### 9. Why don't guests have to confirm their email, when account holders do?
+
+**Answer:** It's a trade-off between friction and abuse. A guest typed their address seconds ago to get a receipt.
+My first version sent them a "confirm your email" link first, and that loses real customers' confirmations, because
+many won't click, especially on mobile. An account is different: it's cheap to create with a script and it keeps
+receiving email for its whole life, so one click at sign-up is worth it. For guests I moved the protection to the
+places an attacker has to pass: Turnstile before the order exists, the cash-on-delivery rate limits, and a cap of
+two guest confirmations per address per day. The worst case for a stranger is two emails a day, and only after
+the attacker solved a CAPTCHA.
+
+### 10. How does Turnstile work, and why verify the token on the server?
+
+**Answer:** The widget runs in the shopper's browser, mostly invisibly, and returns a one-time token. The page sends
+that token with the order. The **server** posts it to Cloudflare's `siteverify` API with our secret key and the
+client's IP, and only creates the order if Cloudflare says it's valid and was made for the `checkout` action. A
+check only in the browser would be pointless: a bot just calls our API directly and skips the widget. A token
+works once and expires after 5 minutes, so it can't be replayed, which is why the widget resets after any failed
+attempt. Logged-in customers skip it: an account is already a barrier.
+
+### 11. If Cloudflare is down, do guest orders still work?
+
+**Answer:** No. It fails closed: the API answers 503 "we couldn't run the security check, try again". Failing open
+would keep the shop working, but then anyone who can make the check fail, for example by blocking the call, would
+switch the protection off. The impact is small: it only affects guests, logged-in customers can still order, and
+Cloudflare outages are rare and short. It's a conscious choice, and I can name the cost.
+
+### 12. Two guest orders for the same address arrive at the same moment. How do you keep the "2 a day" cap exact?
+
+**Answer:** The cap is checked when the confirmation is written, inside the order's transaction. Just before
+counting, I take a Postgres advisory lock on a hash of the address: `pg_advisory_xact_lock(hashtext(...))`. A second
+transaction for the same address waits at that line until the first commits, then counts again and sees the new
+row. Without the lock, both could count "1 so far" and both send. The lock is per address, so different customers
+never wait for each other, and it's released automatically at commit or rollback.
+
+### 13. A user signs up with a typo in their email. What happens?
+
+**Answer:** They land on a "check your email" page, already logged in, showing the address the link went to. There's
+a resend button with a countdown, which matches the server's rate limit of one a minute. If they're limited anyway,
+the API's `Retry-After` header drives the countdown. "Wrong email? Change it" asks for the new address **and the
+password**, so a stolen session cookie alone can't redirect the account to an attacker's mailbox. It only works
+while the address is unconfirmed. Changing a confirmed address properly means confirming the new one before
+switching, which is a separate feature.

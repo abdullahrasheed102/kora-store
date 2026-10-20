@@ -7,6 +7,8 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { EmailVerified } from "@/lib/types";
 
+const CONFIRMED_PAGE = "/account?email_confirmed=1";
+
 /**
  * The page the "confirm your email" link opens. It waits for a click instead of confirming on
  * page load: mail scanners open links in emails automatically, and they never click buttons.
@@ -21,7 +23,16 @@ export function VerifyEmailForm() {
     setError(null);
     setLoading(true);
     try {
-      setResult(await api.verifyEmail(token));
+      const verified = await api.verifyEmail(token);
+      if (verified.signed_in) {
+        // A full page load, so the account page renders fresh with the confirmed status.
+        // A full page load on purpose (as after login in auth-form.tsx): the client router may hold a copy
+        // of /account from before the email was confirmed, which would show the old banner.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+        window.location.assign(CONFIRMED_PAGE);
+        return;
+      }
+      setResult(verified); // opened on another device, or logged out: show it here, then log in
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : "Something went wrong. Please try again.");
     } finally {
@@ -37,18 +48,14 @@ export function VerifyEmailForm() {
     return (
       <div role="status" className="space-y-4">
         <p className="text-lg">
-          Thank you. <span className="font-medium">{result.email}</span> is confirmed.
+          Thank you. <span className="break-all font-medium">{result.email}</span> is confirmed.
         </p>
-        <p className="text-muted">
-          {result.order_number
-            ? `Your confirmation for order ${result.order_number} is on its way, and we'll email you when it ships.`
-            : "We'll email you order confirmations and delivery updates from now on."}
-        </p>
+        <p className="text-muted">We&apos;ll email you order confirmations and delivery updates from now on.</p>
         <Link
-          href={result.order_number ? `/track?order=${result.order_number}` : "/shop"}
+          href={`/login?next=${encodeURIComponent(CONFIRMED_PAGE)}`}
           className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper hover:bg-accent"
         >
-          {result.order_number ? "Track your order" : "Continue shopping"}
+          Log in to your account
         </Link>
       </div>
     );

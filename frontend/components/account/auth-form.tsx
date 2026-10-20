@@ -31,8 +31,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
         mode === "signup"
           ? await api.signup({ email, password, name: String(form.get("name") ?? "") })
           : await api.login({ email, password });
-      // Admins go to /admin, customers back to where they came from (or /account).
-      const destination = postLoginPath(user.role, next);
+      // A new account goes to "check your email" (it's logged in already). On login, admins go to
+      // /admin and customers back to where they came from (or /account).
+      const destination =
+        mode === "signup"
+          ? `/check-email?sent=1${next ? `&next=${encodeURIComponent(next)}` : ""}`
+          : postLoginPath(user.role, next);
       // A full page load, not router.replace(): the client router may hold pages prefetched while
       // logged out (e.g. /account → "redirect to /login"). Reloading drops every cached page, so
       // everything renders fresh with the new session cookie.

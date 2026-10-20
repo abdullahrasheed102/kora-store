@@ -370,7 +370,7 @@ def production_config(monkeypatch: pytest.MonkeyPatch, **env: str) -> Production
     base = {"APP_ENV": "production", "SECRET_KEY": "s" * 40, "JWT_SECRET_KEY": "j" * 40,
             "SANDBOX_WEBHOOK_SECRET": "w" * 40, "FRONTEND_URL": "https://kora.example.dev",
             "DATABASE_URL": "postgresql://u:p@db.neon.tech/kora?sslmode=require"}
-    for name in ("EMAIL_PROVIDER", "RESEND_API_KEY", "EMAIL_FROM", "ADMIN_NOTIFY_EMAIL", "OUTBOX_CRON_SECRET"):
+    for name in ("EMAIL_PROVIDER", "RESEND_API_KEY", "EMAIL_FROM", "ADMIN_NOTIFY_EMAIL", "OUTBOX_CRON_SECRET", "TURNSTILE_SECRET_KEY"):
         monkeypatch.delenv(name, raising=False)
     for name, value in (base | env).items():
         monkeypatch.setenv(name, value)
@@ -387,5 +387,5 @@ def test_production_email_settings_are_checked(monkeypatch: pytest.MonkeyPatch) 
     assert any("OUTBOX_CRON_SECRET" in problem for problem in problems)
     assert any("mailpit" in p for p in production_problems(production_config(monkeypatch, EMAIL_PROVIDER="mailpit")))
     ok = production_config(monkeypatch, EMAIL_PROVIDER="resend", RESEND_API_KEY="re_x", ADMIN_NOTIFY_EMAIL="me@x.dev",
-                           OUTBOX_CRON_SECRET="c" * 40)
+                           OUTBOX_CRON_SECRET="c" * 40, TURNSTILE_SECRET_KEY="0x4AAAAAAArealsecret")
     assert production_problems(ok) == []

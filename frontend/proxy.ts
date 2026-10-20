@@ -8,12 +8,13 @@ const SESSION_COOKIE = "access_token_cookie";
 // These are optimistic, routing-only checks on the cookie. They don't verify the token; Flask
 // does that (and checks the real role in the database) on every API call the page makes.
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(SESSION_COOKIE)?.value;
 
   if (!token) {
     const login = new URL("/login", request.url);
-    login.searchParams.set("next", pathname);
+    // Keep the query too, e.g. /account?email_confirmed=1 after confirming on another device.
+    login.searchParams.set("next", pathname + search);
     return NextResponse.redirect(login);
   }
 
@@ -26,4 +27,4 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/account", "/account/:path*", "/admin", "/admin/:path*"] };
+export const config = { matcher: ["/account", "/account/:path*", "/admin", "/admin/:path*", "/check-email"] };

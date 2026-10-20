@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { ClearCart, WaitForPayment } from "@/components/checkout/payment-status";
 import { TextSkeleton } from "@/components/skeletons";
 import { api, isNotFound } from "@/lib/api";
+import { getCurrentUser } from "@/lib/api-server";
 import { COUNTRY_NAMES, formatDate, formatPrice, paymentSummary, SHIPPING_LABELS } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Thank you", robots: { index: false } };
@@ -23,10 +24,13 @@ export default function SuccessPage({ searchParams }: PageProps<"/order/success"
 async function Confirmation({ searchParams }: Pick<PageProps<"/order/success">, "searchParams">) {
   const { order: orderNumber, session_id: sessionId } = await searchParams;
   if (typeof orderNumber !== "string" || typeof sessionId !== "string") notFound();
-  const order = await api.confirmation(orderNumber, sessionId).catch((error) => {
-    if (isNotFound(error)) notFound();
-    throw error;
-  });
+  const [order, user] = await Promise.all([
+    api.confirmation(orderNumber, sessionId).catch((error) => {
+      if (isNotFound(error)) notFound();
+      throw error;
+    }),
+    getCurrentUser(), // null for guests
+  ]);
 
   if (order.status === "cancelled") {
     return (
@@ -66,12 +70,20 @@ async function Confirmation({ searchParams }: Pick<PageProps<"/order/success">, 
           ) : (
             <WaitForPayment />
           )}
-          {confirmed && (
-            <p className="mt-3 text-sm text-muted">
-              Your confirmation is on its way to <span className="break-all font-medium text-ink">{order.email}</span>. First
-              order with this address? We&apos;ll ask you to confirm it first.
-            </p>
-          )}
+          {confirmed &&
+            (user && !user.email_verified ? (
+              // Accounts get order emails only once their address is confirmed (guests get them directly).
+              <p className="mt-3 text-sm text-muted">
+                Confirm your email to get your order confirmation and delivery updates.{" "}
+                <Link href="/check-email" className="font-medium text-ink underline underline-offset-4 hover:text-accent">
+                  Resend the link
+                </Link>
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-muted">
+                Your confirmation is on its way to <span className="break-all font-medium text-ink">{order.email}</span>.
+              </p>
+            ))}
           <p className="mt-3 text-xs text-muted">
             This is a portfolio demonstration store: no payment was taken and nothing will be shipped.
           </p>

@@ -133,7 +133,8 @@ export type User = {
   created_at: string;
 };
 
-export type EmailVerified = { verified: true; email: string; order_number: string | null };
+// signed_in: this browser is logged in as the owner of the address (so: go to /account).
+export type EmailVerified = { verified: true; email: string; signed_in: boolean };
 
 export type Country = "US" | "GB" | "CA" | "AU";
 
@@ -210,6 +211,7 @@ export type CheckoutRequest = {
   items: { variant_id: number; quantity: number }[];
   save_address: boolean;
   phone?: string; // required for cash on delivery
+  turnstile_token?: string; // guests only: proof from the Cloudflare Turnstile widget
 };
 
 // --- Sandbox payment provider ------------------------------------------------------------------

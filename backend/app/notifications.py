@@ -7,6 +7,15 @@ app/mail/outbox.py). Call them just before the commit that makes the change real
 Today the checkout, the admin pages and the contact form call these. In phase 8D the admin
 Copilot calls the same functions after the admin approves an action, so every path sends the
 same emails.
+
+Who gets order emails:
+- Account holders: only once they've confirmed their email (the sign-up link). Until then the
+  rows are recorded as suppressed ("unverified").
+- Guests: directly, with no confirmation step. A guest just typed the address to receive a
+  receipt, and asking them to click a link first loses real customers. The abuse risk (someone
+  typing a stranger's address) is limited instead by Turnstile on guest checkout (bots can't
+  place orders), at most EMAIL_GUEST_ORDER_DAILY_CAP guest-order confirmations per address per day,
+  the global daily cap, and never emailing reserved domains.
 """
 
 import logging
@@ -15,11 +24,24 @@ from datetime import date
 from typing import Any
 
 from flask import current_app
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.mail.outbox import enqueue, is_blocked
+from app.mail.outbox import enqueue, is_blocked, utc_now
 from app.mail.verification import is_verified, make_token, verify_url
-from app.models import Order, OrderEvent, OrderStatus, PaymentMethod, ReturnRequest, ReturnType, ShippingMethod, SupportTicket, User
+from app.models import (
+    EmailOutbox,
+    EmailStatus,
+    Order,
+    OrderEvent,
+    OrderStatus,
+    PaymentMethod,
+    ReturnRequest,
+    ReturnType,
+    ShippingMethod,
+    SupportTicket,
+    User,
+)
 from app.returns import refund_estimate_cents, return_shipping
 
 log = logging.getLogger(__name__)
@@ -54,28 +76,54 @@ STATUS_UPDATES = {
 
 
 def order_placed(session: Session, order: Order) -> None:
-    """A card order was paid, or a cash-on-delivery order was placed.
+    """A card order was paid, or a cash-on-delivery order was placed: send the confirmation."""
+    reason = None
+    if is_guest(order) and not is_blocked(order.email) and _guest_cap_reached(session, order.email):
+        reason = GUEST_CAP_REASON
+    _to_customer(session, order, key=f"order-confirmation:{order.id}", kind="order_confirmation",
+                 suppressed_reason=reason)
 
-    A verified address gets the confirmation now. An unverified one (a guest, or an account that
-    hasn't clicked its link yet) first gets one short "is this your email?" message. Clicking it
-    sends the confirmation (app/mail/verification.py).
+
+GUEST_CAP_REASON = "guest_daily_cap"
+
+
+def is_guest(order: Order) -> bool:
+    return order.user_id is None
+
+
+def _guest_cap_reached(session: Session, email: str) -> bool:
+    """Has this address already had EMAIL_GUEST_ORDER_DAILY_CAP guest-order confirmations today?
+
+    Counted when the email is WRITTEN (not sent), inside the order's transaction. An advisory lock
+    on the address makes two orders placed at the same moment take turns, so both can't see
+    "1 so far" and squeeze past a cap of 2. The lock is released when the order commits.
     """
-    if is_blocked(order.email) or is_verified(session, order.email):
-        order_confirmation(session, order)  # a blocked address is recorded as suppressed
-        return
-    enqueue(
-        session,
-        key=f"confirm-order-email:{order.id}",
-        kind="confirm_order_email",
-        to=order.email,
-        context={"order_number": order.order_number, "verify_url": verify_url(make_token(order.email, order.id))},
-        reply_to=_reply_to(),
-        order_id=order.id,
+    session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"guest-email-cap:{email}"))))
+    day_start = utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
+    sent_today = session.scalar(
+        select(func.count())
+        .select_from(EmailOutbox)
+        .join(Order, Order.id == EmailOutbox.order_id)
+        .where(
+            EmailOutbox.kind == "order_confirmation",
+            EmailOutbox.to_email == email,
+            EmailOutbox.status != EmailStatus.SUPPRESSED,
+            EmailOutbox.created_at >= day_start,
+            Order.user_id.is_(None),
+        )
     )
+    return (sent_today or 0) >= current_app.config["EMAIL_GUEST_ORDER_DAILY_CAP"]
 
 
-def order_confirmation(session: Session, order: Order) -> None:
-    _to_customer(session, order, key=f"order-confirmation:{order.id}", kind="order_confirmation")
+def _confirmation_was_capped(session: Session, order: Order) -> bool:
+    """A guest order whose confirmation hit the cap gets no later emails either."""
+    return session.scalar(
+        select(func.count()).where(
+            EmailOutbox.order_id == order.id,
+            EmailOutbox.kind == "order_confirmation",
+            EmailOutbox.suppressed_reason == GUEST_CAP_REASON,
+        )
+    ) > 0
 
 
 def order_status_changed(session: Session, order: Order, event: OrderEvent) -> None:
@@ -255,12 +303,18 @@ def account_verification(session: Session, user: User) -> None:
 # --- helpers ------------------------------------------------------------------------------------------
 
 
-def _to_customer(session: Session, order: Order, *, key: str, kind: str, **context: Any) -> None:
-    """An email about an order, to the address on the order, only if that address is verified."""
-    reason = None
-    if not is_blocked(order.email) and not is_verified(session, order.email):
-        # Recorded (so support can see what we didn't send, and why), but never sent.
-        reason = "unverified"
+def _to_customer(
+    session: Session, order: Order, *, key: str, kind: str, suppressed_reason: str | None = None, **context: Any
+) -> None:
+    """An email about an order, to the address on the order. Suppressed emails are recorded (so
+    support can see what we didn't send, and why) but never sent."""
+    reason = suppressed_reason
+    if reason is None and not is_blocked(order.email):  # (enqueue() records blocked domains itself)
+        if is_guest(order):
+            if _confirmation_was_capped(session, order):
+                reason = GUEST_CAP_REASON
+        elif not is_verified(session, order.email):
+            reason = "unverified"  # an account that hasn't clicked its confirmation link yet
     enqueue(
         session, key=key, kind=kind, to=order.email, context={"order": order_context(order), **context},
         reply_to=_reply_to(), order_id=order.id, suppressed_reason=reason,
@@ -300,7 +354,8 @@ def order_context(order: Order) -> dict[str, Any]:
         "total": money(order.total_cents),
         "address": [line for line in address if line],
         "is_cod": order.payment_method is PaymentMethod.COD,
-        "track_url": f"{site}/track?order={order.order_number}",
+        # Guests have no account to log in to, so their emails link to the public tracking page.
+        "url": f"{site}/account/orders/{order.order_number}" if order.user_id else f"{site}/track?order={order.order_number}",
     }
 
 

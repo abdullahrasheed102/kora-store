@@ -10,21 +10,28 @@ import { COUNTRY_NAMES, formatDate, formatPrice } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Your account", robots: { index: false } };
 
-export default function AccountPage() {
+export default function AccountPage({ searchParams }: PageProps<"/account">) {
   return (
     <Suspense fallback={<TextSkeleton lines={8} />}>
-      <Overview />
+      <Overview searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Overview() {
-  const user = await requireCustomer("/account");
+async function Overview({ searchParams }: Pick<PageProps<"/account">, "searchParams">) {
+  const [user, { email_confirmed: justConfirmed }] = await Promise.all([requireCustomer("/account"), searchParams]);
   const [orders, addresses] = await Promise.all([accountApi.orders(), accountApi.addresses()]);
   const defaultAddress = addresses.find((address) => address.is_default);
 
   return (
     <div className="space-y-12">
+      {/* Arriving from the link in the confirmation email */}
+      {justConfirmed === "1" && user.email_verified && (
+        <p role="status" className="rounded-sm bg-sage px-5 py-4 text-sm">
+          <span className="font-medium">Email confirmed.</span> You&apos;ll now get order confirmations and delivery
+          updates at {user.email}.
+        </p>
+      )}
       {!user.email_verified && <VerifyBanner email={user.email} />}
       <section>
         {/* The full name: "first word" broke for names like "Store Admin" ("Hello, Store."). */}

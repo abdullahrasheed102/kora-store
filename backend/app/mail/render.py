@@ -18,7 +18,6 @@ TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 # templates/<kind>.html and templates/<kind>.txt.
 SUBJECTS: dict[str, str] = {
     "verify_account": "Confirm your email for Kora Outfitters",
-    "confirm_order_email": "Confirm your email to get updates on order {{ order_number }}",
     "order_confirmation": "Your order {{ order.number }} is confirmed",
     "order_dispatched": "{{ 'Part of your order' if partial else 'Your order' }} {{ order.number }} is on its way",
     "order_update": "{{ update.subject }}",

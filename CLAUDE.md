@@ -83,6 +83,6 @@ Order dates are relative (`created_days_ago`, `delivered_days_ago`, `estimated_d
 
 ## Commands (keep these working)
 - Backend: `cd backend && docker compose up -d && flask db upgrade && flask seed --reset && flask run` · tests: `pytest` · after adding photos: `flask images sync`
-- Email: local inbox (Mailpit) at http://localhost:8025 · retry job by hand: `flask outbox process` · see a template: `flask email preview <name|all>`. Customer emails are written to `email_outbox` in the same transaction as the change (`app/notifications.py`), never sent inside it.
+- Email: local inbox (Mailpit) at http://localhost:8025 · retry job by hand: `flask outbox process` · see a template: `flask email preview <name|all>`. Customer emails are written to `email_outbox` in the same transaction as the change (`app/notifications.py`), never sent inside it. Accounts get order emails only after confirming their address; guests get them directly, protected by Turnstile on guest checkout (`app/turnstile.py`) and `EMAIL_GUEST_ORDER_DAILY_CAP`. Locally, Turnstile uses Cloudflare's test keys.
 - Frontend: `cd frontend && npm run dev` · checks: `npm test && npm run lint && npm run build`
 - Production: Render runs `backend/start.sh` (migrations → policy sync → image sync → gunicorn, settings in `render.yaml` and `backend/gunicorn.conf.py`); Vercel builds `frontend/`. Steps in `DEPLOY.md`. Never run `flask seed --reset` against Neon.

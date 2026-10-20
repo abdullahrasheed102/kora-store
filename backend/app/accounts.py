@@ -11,9 +11,11 @@ from pydantic import BaseModel, EmailStr, Field, StringConstraints, model_valida
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
+from app import notifications
 from app.errors import APIError
-from app.models import Address, Order, User
+from app.models import Address, Order, User, normalize_email
 from app.returns import return_view
+from app.security import verify_password
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 OptionalText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)] | None
@@ -66,6 +68,33 @@ class AddressBody(BaseModel):
 
 def find_user_by_email(session: Session, email: str) -> User | None:
     return session.scalars(select(User).where(User.email == email.strip().lower())).one_or_none()
+
+
+class ChangeEmailBody(BaseModel):
+    email: EmailStr = Field(max_length=254)
+    password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)
+
+
+def change_unconfirmed_email(session: Session, user: User, body: ChangeEmailBody) -> User:
+    """"Wrong email? Change it" on the check-your-email page.
+
+    Only while the address is unconfirmed: changing a confirmed address safely needs a confirmation
+    of the NEW address before switching, which is a bigger feature. The password is required, so a
+    stolen session cookie alone can't move an account to an attacker's address.
+    """
+    if user.email_verified:
+        raise APIError("already_verified", "Your email is already confirmed, so it can't be changed here.", 409)
+    if not verify_password(user.password_hash, body.password):
+        raise APIError("wrong_password", "That password isn't right.", 403)
+    new_email = normalize_email(body.email)
+    if new_email != user.email:
+        if find_user_by_email(session, new_email):
+            raise APIError("email_taken", "An account with this email already exists.", 409)
+        user.email = new_email
+        session.flush()  # the UNIQUE constraint still guards against a simultaneous sign-up
+    notifications.account_verification(session, user)  # a fresh link to the (new) address
+    session.commit()
+    return user
 
 
 # --- addresses --------------------------------------------------------------------------------

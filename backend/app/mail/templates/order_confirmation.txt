@@ -9,7 +9,7 @@ Hi {{ order.first_name }}, we've received your order and we're processing it now
 You chose cash on delivery. Please have {{ order.total }} ready in cash for the courier.
 {% endif %}
 
-Track your order: {{ order.track_url }}
+Track your order: {{ order.url }}
 
 {{ ui.order_summary(order) }}
 {% endblock %}

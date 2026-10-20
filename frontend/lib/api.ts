@@ -33,6 +33,8 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    /** Seconds to wait before trying again (from the Retry-After header on a 429). */
+    public readonly retryAfter: number | null = null,
   ) {
     super(message);
     this.name = "ApiError";
@@ -72,7 +74,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body = await response.json().catch(() => null);
   if (!response.ok) {
     const error = body?.error ?? {};
-    throw new ApiError(response.status, error.code ?? "unknown_error", error.message ?? response.statusText);
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    throw new ApiError(
+      response.status,
+      error.code ?? "unknown_error",
+      error.message ?? response.statusText,
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
+    );
   }
   return body as T;
 }
@@ -142,6 +150,9 @@ export const api = {
   verifyEmail: (token: string) => request<EmailVerified>("/email/verify", json("POST", { token })),
   resendVerification: () =>
     request<{ sent: boolean; already_verified: boolean }>("/email/resend-verification", json("POST")),
+  // Only while the address is unconfirmed (a typo at sign-up). Needs the password.
+  changeEmail: (email: string, password: string) =>
+    request<{ user: User }>("/email/change", json("POST", { email, password })),
 
   contact: (body: { name: string; email: string; order_number?: string; subject: string; message: string }) =>
     request<{ id: number }>("/support/contact", json("POST", body)),

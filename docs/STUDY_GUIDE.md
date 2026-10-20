@@ -985,11 +985,16 @@ one. The goal: every email is sent **exactly once**, and **never** for a change 
   `FOR UPDATE SKIP LOCKED` keeps two senders on different rows.
 - **Backoff and giving up.** Temporary errors (network, 429, 5xx) retry after 1, 5, 15, 60, then 240 minutes. A
   permanent error (most other 4xx), or the 6th failure, marks the row `failed`.
-- **Abuse protection.** Anyone can type any address on a public demo:
-  - customer emails go only to **verified** addresses (a sign-up link, or a one-time "is this your email?" message
-    after a guest order, which contains no order details)
-  - reserved domains (`example.com`, `kora.test`, `.test`, `.invalid`…) are never emailed, which covers all seed data
-  - daily caps: per recipient (over → dropped) and global (over → postponed to tomorrow)
+- **Accounts vs guests.** Anyone can type any address on a public demo, so:
+  - **accounts** confirm their address once (a sign-up link). Until then they can shop but get no order emails.
+    After sign-up they land on `/check-email`: resend with a countdown, and "Wrong email? Change it" (password needed)
+  - **guests** get their receipt directly. A "confirm first" step would lose real customers' confirmations.
+    Abuse is stopped by layers instead:
+    - **Cloudflare Turnstile** on guest checkout: a one-time token, verified by our server with Cloudflare
+      (with the client IP and `action == "checkout"`). If Cloudflare can't be reached, it **fails closed**
+    - at most **2 guest-order confirmations per address per day**, counted under a per-address advisory lock
+  - for everyone: reserved domains (`example.com`, `kora.test`, `.test`…) are never emailed, which covers all seed
+    data, plus daily caps per recipient (over → dropped) and global (over → postponed to tomorrow)
 - **Signed tokens.** Verification links carry data signed with `SECRET_KEY` by `itsdangerous`, with a salt and a
   7-day expiry. They check themselves, so there's no token table.
 - **Providers (adapter pattern again).** `EMAIL_PROVIDER` = `resend` (production, HTTPS API: Render's free plan
@@ -1010,13 +1015,19 @@ one. The goal: every email is sent **exactly once**, and **never** for a change 
 3. **A 5-minute job would keep Neon awake.** A query every 5 minutes means the database never sleeps. *Fix:* an
    in-memory "maybe something is due" flag. It's `True` after any new email and after every restart, so the job only
    queries when it must.
-4. **Mail scanners open links.** If opening the verification link confirmed the address, a company's virus scanner
+4. **The first guest flow cost real customers.** Version one made guests confirm their email before getting the
+   order confirmation. That's safe, but many shoppers never click, so their receipt never arrives. *Fix:* guests
+   get emails directly, and the protection moved to Turnstile + a per-address cap. *Lesson:* a security control
+   in the wrong place hurts real users more than attackers. Put it where the attacker has to pass (placing the
+   order), not where the customer has to.
+5. **Mail scanners open links.** If opening the verification link confirmed the address, a company's virus scanner
    would confirm it, not the person. *Fix:* the link opens a page, and a **button** sends the `POST`.
-5. **Autogenerate wrote the status CHECK twice** (again, as in phase 4). We removed both copies: the `Enum` column
+6. **Autogenerate wrote the status CHECK twice** (again, as in phase 4). We removed both copies: the `Enum` column
    already creates the constraint.
 
 **Files to look at:** `backend/app/mail/outbox.py`, `backend/app/mail/senders.py`, `backend/app/mail/verification.py`,
-`backend/app/mail/templates/`, `backend/app/notifications.py`, `backend/app/api/email.py`, the `notifications.*`
+`backend/app/mail/templates/`, `backend/app/notifications.py`, `backend/app/api/email.py`, `backend/app/turnstile.py`,
+`frontend/components/checkout/turnstile-widget.tsx`, `frontend/app/check-email/`, the `notifications.*`
 calls in `app/checkout.py`, `app/admin.py` and `app/support.py`, `.github/workflows/email-outbox.yml`,
 `backend/docker-compose.yml` (Mailpit), DEPLOY.md step 9.
 
@@ -1026,8 +1037,8 @@ calls in `app/checkout.py`, `app/admin.py` and `app/support.py`, `.github/workfl
 > the email. So I used the transactional outbox pattern: the email is a row written in the same transaction as the
 > order change. A SQLAlchemy after-commit hook sends it in a background thread, and a GitHub Actions job retries
 > failures every 5 minutes with backoff and leases. Duplicates are blocked twice: a unique idempotency key in my table
-> and the same key on Resend's API. Because it's a public demo, customer emails only go to verified addresses, never
-> to reserved domains, under daily caps. Production uses Resend over HTTPS because Render blocks SMTP, with SPF and
+> and the same key on Resend's API. Accounts confirm their email once. Guests get receipts directly, protected by
+> Cloudflare Turnstile verified on the server and a cap of two guest confirmations per address per day. Production uses Resend over HTTPS because Render blocks SMTP, with SPF and
 > DKIM on a subdomain. Locally everything lands in Mailpit."
 
 ---
@@ -1584,9 +1595,10 @@ retry after 'Resend accepted it, then we crashed' isn't delivered twice."
   it. Now the key has a random part, because each resend is a new thing that should happen once."
 
 **K3. Your demo store lets anyone type any email. How do you stop it being used to spam people?**
-"Customer emails only go to verified addresses. Sign-up sends a signed link. A guest order first gets one minimal
-'is this your email?' message with no order details. Reserved domains like `example.com` are never emailed. And there
-are daily caps: per recipient, where extra emails are dropped, and global, where they wait for tomorrow."
+"Accounts confirm their address with a signed link before getting order emails. Guests get their receipt directly,
+so guest checkout is protected instead: a Cloudflare Turnstile token checked on the server, the COD rate limits, and
+at most two guest confirmations per address per day. Reserved domains like `example.com` are never emailed, and a
+global daily cap is the last line."
 - *Follow-up: Why does the confirmation page need a button?* "Mail scanners open every link in an email. If opening
   the link confirmed the address, the scanner would confirm it. A button sending a POST is something only a person does."
 
@@ -1596,6 +1608,22 @@ is a signature on each email, with the public key in DNS. DMARC says what to do 
 mail goes to spam. I send from a subdomain so the demo can't hurt my main domain's reputation."
 - *Follow-up: Why Resend's HTTP API and not SMTP?* "Render's free plan blocks SMTP ports. HTTP also gives clear status
   codes, so I can decide what to retry (429 and 5xx) and what not to (most other 4xx)."
+
+**K5. Why don't guests confirm their email, when accounts do?**
+"A guest wants a receipt now. My first version asked them to confirm first, and that loses real customers'
+confirmations. An account is cheap to create with a script and gets emails for its whole life, so one click at
+sign-up is worth it. For guests I put the protection where the attacker has to pass: Turnstile before the order
+exists, plus the per-address cap."
+- *Follow-up: Why check the Turnstile token on the server?* "A bot can call the API directly and skip the widget.
+  The server sends the one-time token to Cloudflare with our secret key and the client IP, and checks it was made
+  for the checkout action."
+
+**K6. What happens to guest checkout if Cloudflare is down?**
+"It fails closed: a 503 'try again in a moment'. Failing open would let anyone who can break the check switch the
+protection off. Only guests are affected, and outages are rare and short."
+- *Follow-up: How do you keep the guest cap exact when two orders arrive at once?* "A Postgres advisory lock on a
+  hash of the address, taken in the order's transaction before counting. The second order waits, then counts the
+  first one's email."
 
 ## Part 5 — Cheat sheet
 
@@ -1612,7 +1640,7 @@ The browser talks to one domain only: first-party cookies, no CORS.
 | | |
 |---|---|
 | Catalog | 20 products · 217 variants · 65 product photos · 12 seeded orders · 5 policies |
-| Tests | 427 backend (real Postgres) · 22 frontend unit tests · 49 API endpoints |
+| Tests | 443 backend (real Postgres) · 24 frontend unit tests · 50 API endpoints |
 | Shipping | Free over $75 · standard $6.95 (3–6 days) · express $14.95 (2 days) · international $19.95 (7–14 days) |
 | Returns | 30 days from delivery · refunds in 5–7 business days · COD refunds by bank transfer or store credit |
 | Session | JWT in httpOnly + Secure + SameSite=Lax cookie · 7 days · argon2id · passwords 10–128 characters |
@@ -1620,7 +1648,7 @@ The browser talks to one domain only: first-party cookies, no CORS.
 | Webhooks | HMAC-SHA256 over `"<t>.<body>"` · 5-minute window · `compare_digest` · checkout session expires after 30 min · expiry job hourly for orders older than 60 min |
 | Production | gunicorn 1 worker × 4 threads, 30 s timeout · Render sleeps after 15 min (≈1 min to wake) · Neon sleeps after 5 min (≈1 s) · `pool_recycle` 300 s · secrets ≥ 32 characters |
 | Images | 23 MB → 1.2 MB (first 7 site photos) · 4:5 product photos, padded not cropped · WebP quality 80, max 1200 px (hero 2400) |
-| Email (8A) | 10 email types, HTML + text · retries after 1, 5, 15, 60, 240 min, max 6 attempts · 2-min lease · caps 80/day overall, 10/day per recipient · verification links expire in 7 days · resend link 3/h |
+| Email (8A) | 9 email types, HTML + text · retries after 1, 5, 15, 60, 240 min, max 6 attempts · 2-min lease · caps 80/day overall, 10/day per recipient, 2 guest confirmations/day per address · verification links expire in 7 days · resend link 1/min + 5/h · Turnstile on guest checkout (fails closed) |
 | Homepage (local Lighthouse, median of 3) | Mobile 90, desktop 74 · layout shift 0 · Motion ≈ 33 KB gzipped |
 
 **Ten decisions to remember**
@@ -1640,7 +1668,8 @@ The browser talks to one domain only: first-party cookies, no CORS.
 10. **Free-tier workarounds:** migrations in `start.sh`, seed from the laptop, GitHub Actions for cron, liveness
     health check so Neon can sleep, fail-fast production config.
 11. **Emails through a transactional outbox:** written in the same transaction, sent after commit, retried with
-    backoff, idempotent in two layers, and only to verified addresses.
+    backoff, idempotent in two layers. Accounts confirm their email; guests are protected by Turnstile and a
+    per-address cap.
 
 **Real problems to talk about:**
 - Stripe isn't available in Pakistan → sandbox adapter
@@ -1655,6 +1684,7 @@ The browser talks to one domain only: first-party cookies, no CORS.
 - duplicate CHECKs and the missing sequence in autogenerated migrations
 - reduced-motion "jump"
 - the vanished resend email (an idempotency key that wasn't unique enough)
+- the guest "confirm first" step that lost real customers' receipts → Turnstile + a cap instead
 - keeping Neon asleep despite a 5-minute job
 
 **Terms to be able to define in one sentence:** app factory, blueprint, ORM, migration, REST, pagination, N+1, Pydantic,
@@ -1663,7 +1693,7 @@ constraint, transaction, row lock, deadlock, race condition, webhook, HMAC, repl
 state machine, RBAC, audit trail, WebP, `srcset`/`sizes`, LCP, lazy loading, upsert, dry run, manifest, GIN index,
 WSGI, gunicorn, cold start, connection pool, PgBouncer, TLS, liveness/readiness, CSP, HSTS, reverse proxy, CDN, DNS,
 CNAME, environment variable, fail fast, COD, outbox pattern, dual write, at-least-once, lease, backoff, advisory lock,
-SPF, DKIM, DMARC, deliverability, SMTP, signed token.
+SPF, DKIM, DMARC, deliverability, SMTP, signed token, CAPTCHA/Turnstile, fail open vs fail closed.
 
 **The honest AI answer:** "I designed and directed it, Claude Code wrote the code, I reviewed and tested it, and I can
 explain every part."

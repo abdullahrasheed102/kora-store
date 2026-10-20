@@ -70,6 +70,8 @@ class CheckoutBody(BaseModel):
     items: list[CartLine] = Field(min_length=1, max_length=MAX_CART_LINES)
     save_address: bool = False
     phone: str | None = Field(None, max_length=30)  # optional for card; required for cash on delivery
+    # Guests only: the Cloudflare Turnstile token from the checkout page (checked in app/api/checkout.py).
+    turnstile_token: str | None = Field(None, max_length=2048)
 
     @model_validator(mode="after")
     def _method_matches_country(self) -> "CheckoutBody":

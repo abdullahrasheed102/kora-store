@@ -273,6 +273,8 @@ Render → `kora-api` → **Environment** → **Add environment variable** for e
 | `OUTBOX_CRON_SECRET` | run `python3 -c "import secrets; print(secrets.token_hex(32))"` and paste the result |
 | `EMAIL_DAILY_CAP` | `80` |
 | `EMAIL_RECIPIENT_DAILY_CAP` | `10` |
+| `EMAIL_GUEST_ORDER_DAILY_CAP` | `2` |
+| `TURNSTILE_SECRET_KEY` | the **secret** key from step 10 (do step 10 first) |
 
 Why before pushing: the Blueprint (`render.yaml`) sets `EMAIL_PROVIDER=resend` on the next deploy. If the key isn't
 there yet, the new version refuses to start (Render keeps the old one running, so the site stays up, but the deploy
@@ -291,11 +293,53 @@ Then **Actions** → **Email outbox** → **Run workflow**. The log ends with JS
 
 ### 9.5 Check it works
 
-1. Sign up on the live site with **your real email**. A "Confirm your email" message arrives within a minute.
-   Click it.
+1. Sign up on the live site with **your real email**. You land on "Check your email", and a "Confirm your email"
+   message arrives within a minute. Click it → **Confirm my email** → your account page says "Email confirmed".
 2. Place a cash-on-delivery order while logged in. The order confirmation arrives within a minute.
-3. Send the contact form. The ticket alert arrives at `ADMIN_NOTIFY_EMAIL`.
-4. Resend → **Emails** shows each one as **Delivered**.
+3. Log out and place a guest order (the Turnstile box appears) with a second address of yours. Its confirmation
+   arrives directly.
+4. Send the contact form. The ticket alert arrives at `ADMIN_NOTIFY_EMAIL`.
+5. Resend → **Emails** shows each one as **Delivered**.
+
+---
+
+## Step 10: Cloudflare Turnstile (the bot check on guest checkout)
+
+Guests get order emails without confirming their address, so bots must not be able to place guest orders.
+Turnstile is Cloudflare's free CAPTCHA alternative. **You don't need to move your domain or DNS to Cloudflare**:
+you only need a free Cloudflare account. The **site key** is public (it's in the page). The **secret key** goes only
+on Render. The API refuses to start in production without the secret.
+
+### 10.1 Create the widget
+
+1. Go to https://dash.cloudflare.com and sign up (free) or log in.
+2. In the left menu, open **Turnstile** (Cloudflare moves menus now and then: if you don't see it, use the search
+   box at the top and type "Turnstile").
+3. **Add widget**:
+   - **Widget name:** `Kora checkout`
+   - **Hostnames:** `kora.abdullahrasheed.tech`. Add your `….vercel.app` address too if you ever test there.
+     The widget only works on these hostnames. Locally we use test keys, so `localhost` isn't needed.
+   - **Widget mode:** **Managed** (recommended: invisible for most visitors, a checkbox only when unsure)
+   - Pre-clearance: **No**
+4. **Create**. Cloudflare shows two values:
+   - **Site Key** (starts with `0x4…`): public, goes to **Vercel**
+   - **Secret Key**: private, goes to **Render**. Treat it like a password.
+
+### 10.2 Add the keys
+
+1. **Render** → `kora-api` → **Environment** → add `TURNSTILE_SECRET_KEY` = the **Secret Key** → Save.
+   (Also in the step 9.3 table.)
+2. **Vercel** → `kora-outfitters` → **Settings → Environment Variables** → add `TURNSTILE_SITE_KEY` = the
+   **Site Key**, for **Production** (and Preview if you use it) → Save. The checkout page reads it on the server, so
+   it has no `NEXT_PUBLIC_` prefix. It takes effect on the next deploy, which the push will trigger.
+
+### 10.3 Check it works (after the push)
+
+- Log out → add something to the bag → `/checkout`. A small Turnstile box appears above the Pay button, and the button
+  stays disabled until it shows a tick.
+- Logged in, there is no box.
+- Turnstile dashboard → your widget: the analytics show the solves within a few minutes.
+
 
 ---
 
@@ -309,7 +353,7 @@ Then **Actions** → **Email outbox** → **Run workflow**. The log ends with JS
 | Policy text | Edit it in Admin → Policies (live at once), **or** change `backend/seed/policies.json` and raise that policy's `version`, then push. `start.sh` runs `flask policies sync`, which only applies higher versions |
 | A Render environment variable | Render → Environment → Save, rebuild, and deploy |
 | Switch email off quickly | Render → Environment → `EMAIL_PROVIDER=log` → Save. Emails are then only written to the log |
-| `BACKEND_URL` / `NEXT_PUBLIC_*` on Vercel | Change it, then **Redeploy** (they're baked in at build time) |
+| `BACKEND_URL` / `NEXT_PUBLIC_*` / `TURNSTILE_SITE_KEY` on Vercel | Change it, then **Redeploy** (they're used at build time) |
 
 ## Troubleshooting
 
@@ -329,4 +373,9 @@ Then **Actions** → **Email outbox** → **Run workflow**. The log ends with JS
 | No email arrives | Neon → SQL Editor: `select kind, to_email, status, suppressed_reason, last_error from email_outbox order by id desc limit 10;`. `suppressed` + `unverified`: the address hasn't clicked its confirmation link. `blocked_domain`: an `@example.com` or `.test` address (never emailed). `failed`: read `last_error` |
 | `last_error` says `Resend 403 … domain is not verified` | Finish step 9.2, or use `onboarding@resend.dev` as the From address while testing (it only delivers to your own Resend address) |
 | Emails land in spam | Check that the DKIM, SPF and DMARC records all show **Verified** in Resend. Brand-new domains have no reputation yet, so the first few emails may go to spam anyway |
+| Render log: `TURNSTILE_SECRET_KEY is required` | Do step 10 and add the secret on Render |
+| Render log: `TURNSTILE_SECRET_KEY is one of Cloudflare's test keys` | You pasted a `1x0000…` test key: use the widget's real Secret Key |
+| Checkout: the Turnstile box shows an error, or "Invalid domain" | The site's hostname isn't in the widget's hostname list (step 10.1), or `TURNSTILE_SITE_KEY` on Vercel is wrong. Fix it and redeploy Vercel |
+| Guest checkout says "The security check didn't pass" | The site key (Vercel) and secret key (Render) come from different widgets. Copy both from the same one |
+| Guest checkout says "We couldn't run the security check" | Render couldn't reach Cloudflare (guest orders fail closed). Usually brief; check Render logs for `Turnstile siteverify failed` |
 | Email outbox workflow fails with `401` | `OUTBOX_CRON_SECRET` differs between GitHub and Render: paste the same value in both |

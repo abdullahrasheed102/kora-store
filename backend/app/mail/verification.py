@@ -4,12 +4,11 @@ The link carries a token signed with SECRET_KEY (itsdangerous, which Flask alrea
 Nobody can make a valid token without the key, and the signature includes a timestamp, so links
 expire. Because the token is self-checking, we don't need a table of issued tokens.
 
-A valid token proves the clicker can read mail at that address. That's all we need to know before
-sending order emails there, whether it came from sign-up or from a guest checkout.
+A valid token proves the clicker can read mail at that address. Only ACCOUNTS verify their email:
+guests get their order emails directly (see app/notifications.py for why, and what limits abuse).
 """
 
 from datetime import datetime, timedelta
-from typing import Any
 
 from flask import current_app
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -18,7 +17,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.errors import APIError
-from app.models import Order, OrderStatus, User, VerifiedEmail, normalize_email
+from app.models import User, VerifiedEmail, normalize_email
 
 # The salt keeps these tokens separate from anything else signed with SECRET_KEY: a token made
 # for another purpose can never be replayed here.
@@ -30,23 +29,22 @@ def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=SALT)
 
 
-def make_token(email: str, order_id: int | None = None) -> str:
-    """`order_id` set: confirming also sends that order's confirmation email."""
-    return _serializer().dumps({"email": normalize_email(email), "order_id": order_id})
+def make_token(email: str) -> str:
+    return _serializer().dumps({"email": normalize_email(email)})
 
 
 def verify_url(token: str) -> str:
     return f"{current_app.config['FRONTEND_URL'].rstrip('/')}/verify-email?token={token}"
 
 
-def read_token(token: str) -> tuple[str, int | None]:
+def read_token(token: str) -> str:
     try:
         data = _serializer().loads(token, max_age=int(MAX_AGE.total_seconds()))
     except SignatureExpired as error:
         raise APIError("link_expired", "This link has expired. Ask for a new one from your account page.", 410) from error
     except BadSignature as error:  # edited, truncated, or made up
         raise APIError("invalid_link", "This link isn't valid. Check you copied all of it.", 400) from error
-    return data["email"], data.get("order_id")
+    return str(data["email"])
 
 
 def is_verified(session: Session, email: str) -> bool:
@@ -64,21 +62,9 @@ def mark_verified(session: Session, email: str, now: datetime) -> None:
     )
 
 
-def confirm_email(session: Session, token: str, now: datetime) -> dict[str, Any]:
-    """The verification link was clicked. Returns what the confirmation page should say."""
-    from app import notifications  # local import: notifications imports this module
-
-    email, order_id = read_token(token)
+def confirm_email(session: Session, token: str, now: datetime) -> str:
+    """The verification link was clicked. Returns the address that is now verified."""
+    email = read_token(token)
     mark_verified(session, email, now)
-
-    order_number = None
-    if order_id is not None:
-        order = session.get(Order, order_id)
-        # Check the email matches the order, and the order really went through (a link for a
-        # cancelled order shouldn't produce a "thank you for your order" email).
-        if order is not None and order.email == email and order.status is not OrderStatus.CANCELLED:
-            # Same idempotency key as a direct confirmation: clicking twice sends it once.
-            notifications.order_confirmation(session, order)
-            order_number = order.order_number
-    session.commit()  # the verification and the email row together
-    return {"email": email, "order_number": order_number}
+    session.commit()
+    return email

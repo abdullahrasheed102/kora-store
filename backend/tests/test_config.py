@@ -13,6 +13,7 @@ GOOD_PRODUCTION_ENV = {
     "PAYMENT_PROVIDER": "sandbox",
     "RATELIMIT_STORAGE_URI": "memory://",
     "WEB_CONCURRENCY": "1",
+    "TURNSTILE_SECRET_KEY": "0x4AAAAAAAexample-real-looking-secret",
 }
 
 

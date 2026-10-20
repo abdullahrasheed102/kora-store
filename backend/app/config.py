@@ -130,6 +130,11 @@ class BaseConfig:
         # Stay under Resend's free tier (100 emails a day) and stop one address being flooded.
         self.EMAIL_DAILY_CAP = int(os.environ.get("EMAIL_DAILY_CAP", "80"))
         self.EMAIL_RECIPIENT_DAILY_CAP = int(os.environ.get("EMAIL_RECIPIENT_DAILY_CAP", "10"))
+        # Guests' addresses aren't verified, so one address gets at most this many guest-order
+        # confirmations a day (app/notifications.py).
+        self.EMAIL_GUEST_ORDER_DAILY_CAP = int(os.environ.get("EMAIL_GUEST_ORDER_DAILY_CAP", "2"))
+        # Cloudflare Turnstile on guest checkout (app/turnstile.py). Empty = check switched off.
+        self.TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
         # True: send in a background thread after the commit, so nobody waits for the email
         # provider. Tests send inline instead, so they can check the result straight away.
         self.EMAIL_SEND_IN_BACKGROUND = True
@@ -185,7 +190,10 @@ class TestingConfig(BaseConfig):
         self.OUTBOX_CRON_SECRET = "test-outbox-cron-secret"
         self.EMAIL_DAILY_CAP = 80
         self.EMAIL_RECIPIENT_DAILY_CAP = 10
+        self.EMAIL_GUEST_ORDER_DAILY_CAP = 2
         self.EMAIL_SEND_IN_BACKGROUND = False
+        # Off by default so checkout tests needn't solve a challenge; tests/test_turnstile.py turns it on.
+        self.TURNSTILE_SECRET_KEY = ""
 
 
 def production_problems(config: BaseConfig) -> list[str]:
@@ -216,6 +224,10 @@ def production_problems(config: BaseConfig) -> list[str]:
         for name in ("RESEND_API_KEY", "EMAIL_FROM", "ADMIN_NOTIFY_EMAIL"):
             if not getattr(config, name):
                 problems.append(f"EMAIL_PROVIDER=resend needs {name}")
+    if not config.TURNSTILE_SECRET_KEY:
+        problems.append("TURNSTILE_SECRET_KEY is required: it stops bots placing guest orders (DEPLOY.md, step 10)")
+    elif config.TURNSTILE_SECRET_KEY.startswith(("1x0000", "2x0000", "3x0000")):
+        problems.append("TURNSTILE_SECRET_KEY is one of Cloudflare's test keys; use your real secret key")
     if config.OUTBOX_CRON_SECRET and len(config.OUTBOX_CRON_SECRET) < MIN_SECRET_LENGTH:
         problems.append(f"OUTBOX_CRON_SECRET must be a random value of at least {MIN_SECRET_LENGTH} characters")
 

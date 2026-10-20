@@ -19,7 +19,7 @@ Tracking number: {{ update.tracking_number }}
 Expected delivery: {{ update.estimated_delivery }}
 {% endif %}
 
-See your order: {{ order.track_url }}
+See your order: {{ order.url }}
 {% if update.status == "delivered" %}
 
 Not the right fit? You can return unworn items within 30 days at {{ site_url }}/returns

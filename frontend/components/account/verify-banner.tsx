@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { api, ApiError } from "@/lib/api";
@@ -50,6 +51,12 @@ export function VerifyBanner({ email }: { email: string }) {
           </button>
         )}
         {error && <p className="mt-2 text-accent-dark">{error}</p>}
+        <p className="mt-2">
+          Wrong address?{" "}
+          <Link href="/check-email" className="font-medium underline underline-offset-4 hover:text-accent">
+            Change it
+          </Link>
+        </p>
       </div>
     </section>
   );

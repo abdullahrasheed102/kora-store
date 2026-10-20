@@ -1,6 +1,5 @@
 """Each automatic email (docs/AI_PLAN.md section 4): the right email, to the right person, once."""
 
-import re
 from typing import Any
 
 import pytest
@@ -10,15 +9,22 @@ from sqlalchemy.orm import Session
 
 from app import admin as admin_service
 from app import notifications
-from app.models import EmailOutbox, EmailStatus, Order, OrderStatus, ProductVariant
+from app.models import EmailOutbox, EmailStatus, Order, OrderStatus, ProductVariant, User
 from app.payments import SandboxProvider
 from app.seed import SeedCounts
-from tests.conftest import FIXED_NOW, SHOPPER_EMAIL, FakeStripe, RecordingSender, csrf_headers, send_stripe_event, verify_address
+from app.security import hash_password
+from tests.conftest import (
+    FIXED_NOW,
+    SHOPPER_EMAIL,
+    FakeStripe,
+    RecordingSender,
+    csrf_headers,
+    send_stripe_event,
+    verify_address,
+)
+from tests.factories import make_user
 from tests.test_checkout import completed_event, get_order, start_checkout
-from tests.test_cod import place_cod
-
-TOKEN = re.compile(r"token=([A-Za-z0-9_.\-]+)")
-
+from tests.test_cod import cod_body, place_cod
 
 @pytest.fixture(autouse=True)
 def frozen_now(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -28,6 +34,29 @@ def frozen_now(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def no_refunds(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(SandboxProvider, "refund_payment", lambda *_args, **_kwargs: None)
+
+
+SHOPPER_PASSWORD = "a-long-test-password"
+
+
+@pytest.fixture
+def shopper(db_session: Session) -> User:
+    """An account on a domain that may receive email (conftest's customer uses @example.com)."""
+    user = make_user(db_session, email=SHOPPER_EMAIL, password_hash=hash_password(SHOPPER_PASSWORD), name="Maya Chen")
+    db_session.commit()
+    return user
+
+
+def log_in(client: FlaskClient) -> None:
+    response = client.post("/api/auth/login", json={"email": SHOPPER_EMAIL, "password": SHOPPER_PASSWORD})
+    assert response.status_code == 200
+
+
+def account_cod_order(client: FlaskClient, tee: ProductVariant) -> str:
+    response = client.post("/api/checkout/cod", headers=csrf_headers(client),
+                           json=cod_body([{"variant_id": tee.id, "quantity": 1}]))
+    assert response.status_code == 201, response.get_json()
+    return str(response.get_json()["order_number"])
 
 
 @pytest.fixture
@@ -62,32 +91,61 @@ def outbox_rows(session: Session, kind: str | None = None) -> list[EmailOutbox]:
 # --- order placed ------------------------------------------------------------------------------
 
 
-def test_cod_order_to_a_verified_address_gets_the_confirmation(client: FlaskClient, db_session: Session,
-                                                               tee: ProductVariant, mailbox: RecordingSender) -> None:
-    verify_address(db_session, SHOPPER_EMAIL)
+def test_guest_gets_the_confirmation_directly(client: FlaskClient, db_session: Session, tee: ProductVariant,
+                                              mailbox: RecordingSender) -> None:
+    # No "confirm your email" step for guests: they get their receipt straight away.
     number = place_cod(client, [{"variant_id": tee.id, "quantity": 2}], email=SHOPPER_EMAIL)["order_number"]
 
     [email] = mailbox.sent
     assert email.subject == f"Your order {number} is confirmed"
     assert email.to == SHOPPER_EMAIL and email.reply_to == "owner@kora.local"
     assert "Everyday Cotton Tee" in email.text and "cash on delivery" in email.text
-    assert f"/track?order={number}" in email.html
+    assert f"/track?order={number}" in email.html  # guests have no account page to link to
+    assert "/account/" not in email.html
 
 
-def test_unverified_guest_first_confirms_then_gets_the_confirmation_once(
-    client: FlaskClient, db_session: Session, tee: ProductVariant, mailbox: RecordingSender
+def test_a_guest_address_gets_at_most_two_order_confirmations_a_day(
+    client: FlaskClient, admin_client: FlaskClient, db_session: Session, tee: ProductVariant, mailbox: RecordingSender
 ) -> None:
-    number = place_cod(client, [{"variant_id": tee.id, "quantity": 1}], email=SHOPPER_EMAIL)["order_number"]
+    numbers = [place_cod(client, [{"variant_id": tee.id, "quantity": 1}], email=SHOPPER_EMAIL)["order_number"]
+               for _ in range(3)]
 
-    [ask] = mailbox.sent
-    assert ask.subject == f"Confirm your email to get updates on order {number}"
-    assert "Everyday Cotton Tee" not in ask.text + ask.html  # says nothing useful to a stranger
-    token = TOKEN.search(ask.text).group(1)  # type: ignore[union-attr]
+    assert mailbox.subjects() == [f"Your order {numbers[0]} is confirmed", f"Your order {numbers[1]} is confirmed"]
+    [capped] = outbox_rows(db_session, "order_confirmation")[2:]
+    assert (capped.status, capped.suppressed_reason) == (EmailStatus.SUPPRESSED, "guest_daily_cap")
 
-    for _click in range(2):  # clicking the link twice sends the confirmation once
-        response = client.post("/api/email/verify", json={"token": token})
-        assert response.get_json() == {"verified": True, "email": SHOPPER_EMAIL, "order_number": number}
-    assert mailbox.subjects() == [ask.subject, f"Your order {number} is confirmed"]
+    # The capped order's later emails stay silent too; the others carry on as normal.
+    for number in (numbers[2], numbers[0]):
+        admin_post(admin_client, f"/api/admin/orders/{number}/status",
+                   {"status": "shipped", "carrier": "UPS", "tracking_number": "1Z999"})
+    assert mailbox.subjects()[-1] == f"Your order {numbers[0]} is on its way"
+    assert len(mailbox.sent) == 3
+
+
+def test_the_guest_cap_does_not_limit_account_holders(client: FlaskClient, db_session: Session, tee: ProductVariant,
+                                                      mailbox: RecordingSender, shopper: User) -> None:
+    verify_address(db_session, SHOPPER_EMAIL)
+    log_in(client)
+    for _ in range(3):
+        account_cod_order(client, tee)
+    assert len(mailbox.sent) == 3
+
+
+def test_account_holder_emails_link_to_the_account_page(client: FlaskClient, db_session: Session, tee: ProductVariant,
+                                                        mailbox: RecordingSender, shopper: User) -> None:
+    verify_address(db_session, SHOPPER_EMAIL)
+    log_in(client)
+    number = account_cod_order(client, tee)
+    assert f"/account/orders/{number}" in mailbox.sent[0].html
+
+
+def test_an_unconfirmed_account_gets_no_order_emails(client: FlaskClient, db_session: Session, tee: ProductVariant,
+                                                     mailbox: RecordingSender, shopper: User) -> None:
+    log_in(client)
+    account_cod_order(client, tee)  # they can still order...
+    [row] = outbox_rows(db_session)
+    assert (row.status, row.suppressed_reason) == (EmailStatus.SUPPRESSED, "unverified")  # ...but get no email
+    assert mailbox.sent == []
 
 
 def test_card_order_is_confirmed_once_when_paid(client: FlaskClient, db_session: Session, tee: ProductVariant,
@@ -146,9 +204,11 @@ def test_every_delay_is_its_own_email(admin_client: FlaskClient, db_session: Ses
     assert mailbox.subjects().count("Your order KO-1003 is delayed") == 2  # keyed by event, not by status
 
 
-def test_unverified_address_gets_no_status_emails(admin_client: FlaskClient, db_session: Session,
-                                                  seeded: SeedCounts, mailbox: RecordingSender) -> None:
-    sendable_order(db_session, "KO-1003", verified=False)
+def test_unconfirmed_account_gets_no_status_emails(admin_client: FlaskClient, db_session: Session,
+                                                   seeded: SeedCounts, mailbox: RecordingSender, shopper: User) -> None:
+    order = sendable_order(db_session, "KO-1003", verified=False)
+    order.user_id = shopper.id  # an account order, and the account hasn't confirmed its email
+    db_session.commit()
     admin_post(admin_client, "/api/admin/orders/KO-1003/status",
                {"status": "shipped", "carrier": "UPS", "tracking_number": "1Z999"})
     [row] = outbox_rows(db_session)

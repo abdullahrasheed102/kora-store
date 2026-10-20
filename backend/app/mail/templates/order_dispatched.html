@@ -9,6 +9,6 @@
 {% if order.is_cod %}
 {{ ui.note("Cash on delivery: please have " ~ order.total ~ " ready for the courier.") }}
 {% endif %}
-{{ ui.button(order.track_url, "Track your parcel") }}
+{{ ui.button(order.url, "Track your parcel") }}
 {{ ui.order_summary(order) }}
 {% endblock %}

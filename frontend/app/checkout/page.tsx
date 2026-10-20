@@ -45,6 +45,14 @@ async function Checkout({ searchParams }: Pick<PageProps<"/checkout">, "searchPa
   }
   const addresses = user ? await accountApi.addresses() : [];
   return (
-    <CheckoutForm user={user} addresses={addresses} cancelled={cancelled === "1"} declined={payment === "declined"} />
+    <CheckoutForm
+      user={user}
+      addresses={addresses}
+      cancelled={cancelled === "1"}
+      declined={payment === "declined"}
+      // Read on the server, so there's no NEXT_PUBLIC_ variable. The site key isn't secret (it's in
+      // the page anyway); the SECRET key stays on Render. Guests only: accounts skip the check.
+      turnstileSiteKey={user ? null : (process.env.TURNSTILE_SITE_KEY ?? null)}
+    />
   );
 }
