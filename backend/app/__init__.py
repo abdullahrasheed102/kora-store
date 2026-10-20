@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app import models  # noqa: F401  (registers every table on db.metadata for Alembic)
 from app.api import register_blueprints
-from app.commands import images_cli, orders_cli
+from app.commands import images_cli, orders_cli, policies_cli
 from app.config import BaseConfig, config_from_env
 from app.errors import register_error_handlers
 from app.extensions import db, jwt, limiter, migrate
@@ -56,6 +56,7 @@ def create_app(config: BaseConfig | None = None) -> Flask:
     app.cli.add_command(seed_command)
     app.cli.add_command(orders_cli)
     app.cli.add_command(images_cli)
+    app.cli.add_command(policies_cli)
 
     @app.after_request
     def no_store_for_private_data(response: Response) -> Response:

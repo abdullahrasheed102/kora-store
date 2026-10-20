@@ -3,11 +3,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StatusBadge } from "@/components/account/status-badge";
+import { CashCollectedButton } from "@/components/admin/cash-collected-button";
 import { OrderStatusForm } from "@/components/admin/order-status-form";
 import { Card } from "@/components/admin/ui";
 import { isNotFound } from "@/lib/api";
 import { adminApi } from "@/lib/api-server";
-import { COUNTRY_NAMES, formatDate, formatDateTime, formatPrice, returnStatusLabel, SHIPPING_LABELS, statusLabel } from "@/lib/format";
+import {
+  COUNTRY_NAMES,
+  formatDate,
+  formatDateTime,
+  formatPrice,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
+  returnStatusLabel,
+  SHIPPING_LABELS,
+  statusLabel,
+} from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -95,6 +106,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <Card title="Customer">
             <p className="text-sm">{order.customer_name}</p>
             <p className="text-sm text-muted">{order.email}</p>
+            {order.phone && <p className="text-sm text-muted">{order.phone}</p>}
             <address className="mt-3 text-sm not-italic leading-relaxed">
               {address.line1}{address.line2 && `, ${address.line2}`}
               <br />
@@ -108,10 +120,20 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               <div><dt className="text-muted">Carrier / tracking</dt><dd>{order.carrier ? `${order.carrier} · ${order.tracking_number}` : "Not shipped yet"}</dd></div>
               {order.estimated_delivery && <div><dt className="text-muted">Estimated delivery</dt><dd>{formatDate(order.estimated_delivery)}</dd></div>}
               {order.delivered_at && <div><dt className="text-muted">Delivered</dt><dd>{formatDateTime(order.delivered_at)}</dd></div>}
-              <div><dt className="text-muted">Payment</dt><dd className="break-all font-mono text-xs">
-                  {order.payment_id ?? (order.status === "pending_payment" ? "Not paid yet" : "No payment reference (demo order)")}
+              <div>
+                <dt className="text-muted">Payment</dt>
+                <dd>{PAYMENT_METHOD_LABELS[order.payment_method]} · {PAYMENT_STATUS_LABELS[order.payment_status]}</dd>
+              </div>
+              {order.payment_method === "card" && (
+                <div><dt className="text-muted">Payment reference</dt><dd className="break-all font-mono text-xs">
+                  {order.payment_id ?? (order.status === "pending_payment" ? "Not paid yet" : "None (seeded order)")}
                 </dd></div>
+              )}
             </dl>
+            {order.can_mark_cash_collected && <CashCollectedButton order={order} />}
+            {order.payment_method === "cod" && order.payment_status === "unpaid" && !order.can_mark_cash_collected && order.status !== "cancelled" && (
+              <p className="mt-3 text-xs text-muted">Cash can be recorded once the order is out for delivery or delivered.</p>
+            )}
           </Card>
         </div>
       </div>

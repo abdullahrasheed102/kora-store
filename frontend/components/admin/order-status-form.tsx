@@ -27,7 +27,9 @@ export function OrderStatusForm({ order }: { order: AdminOrder }) {
     const text = (name: string) => String(form.get(name) ?? "").trim() || undefined;
     setError(null);
     if (target === "cancelled" && !window.confirm(order.status === "processing"
-      ? "Cancel this order? Its stock goes back on sale and the customer is refunded in full."
+      ? order.payment_method === "cod"
+        ? "Cancel this order? Its stock goes back on sale. (Cash on delivery: nothing was paid, so there's no refund.)"
+        : "Cancel this order? Its stock goes back on sale and the customer is refunded in full."
       : "Cancel this unpaid order?")) return;
     try {
       await api.admin.updateOrderStatus(order.order_number, {

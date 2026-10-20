@@ -14,6 +14,8 @@ from app.models.types import (
     EventActor,
     IntPK,
     OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
     ShippingMethod,
     UpdatedAt,
     enum_column,
@@ -72,6 +74,22 @@ class Order(db.Model):
         enum_column(ShippingMethod, "shipping_method")
     )
 
+    # How the customer pays, and whether the money has arrived. Separate from `status` (where the
+    # parcel is): a cash-on-delivery order is "processing" but still "unpaid" until the courier
+    # collects the cash.
+    payment_method: Mapped[PaymentMethod] = mapped_column(
+        enum_column(PaymentMethod, "payment_method"),
+        default=PaymentMethod.CARD,
+        server_default=PaymentMethod.CARD.value,
+    )
+    payment_status: Mapped[PaymentStatus] = mapped_column(
+        enum_column(PaymentStatus, "payment_status"),
+        default=PaymentStatus.UNPAID,
+        server_default=PaymentStatus.UNPAID.value,
+    )
+    # Required for cash on delivery, so the courier can call before arriving. Shown to admins only.
+    phone: Mapped[str | None] = mapped_column(String(30))
+
     # The address is copied onto the order (not linked to `addresses`), so editing a saved
     # address later never changes where a past order was sent.
     shipping_line1: Mapped[str] = mapped_column(String(200))
@@ -87,6 +105,8 @@ class Order(db.Model):
     delivered_at: Mapped[datetime | None]
 
     # Unique, so a Stripe webhook delivered twice can't create or pay for two orders (phase 4).
+    # Holds the secret that proves you're the buyer on the thank-you page: the payment provider's
+    # session id for card orders, or a random "cod_..." token for cash-on-delivery orders.
     stripe_session_id: Mapped[str | None] = mapped_column(String(255), unique=True)
     stripe_payment_intent: Mapped[str | None] = mapped_column(String(255), unique=True)
 

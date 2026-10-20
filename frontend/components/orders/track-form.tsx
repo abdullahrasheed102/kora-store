@@ -7,7 +7,7 @@ import { useState } from "react";
 import { OrderProgress, OrderTimeline } from "@/components/orders/order-progress";
 import { StatusBadge } from "@/components/account/status-badge";
 import { api, ApiError } from "@/lib/api";
-import { COUNTRY_NAMES, formatDate } from "@/lib/format";
+import { COUNTRY_NAMES, formatDate, paymentSummary } from "@/lib/format";
 import type { TrackingResult } from "@/lib/types";
 
 const inputClass =
@@ -115,6 +115,10 @@ function TrackingDetails({ result }: { result: TrackingResult }) {
                 <dd className="mt-0.5 font-mono">{result.tracking_number}</dd>
               </div>
             )}
+            <div>
+              <dt className="text-muted">Payment</dt>
+              <dd className="mt-0.5">{paymentSummary(result)}</dd>
+            </div>
           </dl>
           <div>
             <h3 className="text-xs font-medium uppercase tracking-widest text-muted">Items</h3>

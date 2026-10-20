@@ -209,7 +209,8 @@ stateDiagram-v2
 | `POST /api/auth/signup`, `/login`, `/logout` · `GET /api/auth/me` | Accounts and sessions (rate limited) | 3 |
 | `GET/POST /api/account/addresses` · `PUT/DELETE /api/account/addresses/<id>` | Saved addresses 🔒 | 3 |
 | `GET /api/account/orders` · `GET /api/account/orders/<number>` | Your own orders 🔒 | 3 |
-| `POST /api/checkout/session` | Pending order + Stripe Checkout Session → `{checkout_url}` (guests or logged in) | 4 |
+| `POST /api/checkout/session` | Card: pending order + Stripe Checkout Session → `{checkout_url}` (guests or logged in) | 4 |
+| `POST /api/checkout/cod` | Cash on delivery: order confirmed at once (`processing` + `unpaid`), stock taken now, phone required, US only. Rate limited: 3/h and 10/day per IP, 3/day per phone | 4 |
 | `POST /api/stripe/webhook` | Stripe events, verified by HMAC signature (only when `PAYMENT_PROVIDER=stripe`) | 4 |
 | `POST /api/sandbox/webhook` | Sandbox events, same verification (only when `PAYMENT_PROVIDER=sandbox`) | 4 |
 | `GET /api/sandbox/sessions/<id>` · `POST /api/sandbox/sessions/<id>/pay` | The sandbox payment page | 4 |
@@ -218,7 +219,7 @@ stateDiagram-v2
 | `POST /api/returns/eligibility` | Which items can be returned, and why not (guest: + email; logged in: own orders) | 5 |
 | `POST /api/returns` | Start a refund or exchange; rules re-checked, order row locked | 5 |
 | `POST /api/support/contact` | Contact form → support ticket (rate limited) | 6 |
-| `/api/admin/*` (15 routes) | Stats, products (incl. `tags`), variants, orders, returns, tickets, policies (incl. `summary`). 🛡 admin role on every route | 6 |
+| `/api/admin/*` (16 routes, incl. `POST /api/admin/orders/<n>/cash-collected`) | Stats, products (incl. `tags`), variants, orders, returns, tickets, policies (incl. `summary`). 🛡 admin role on every route | 6 |
 
 🔒 = needs a login cookie; writes also need the `X-CSRF-TOKEN` header.
 🛡 = one `before_request` hook on the admin blueprint: no cookie → 401, not an admin → 403.
@@ -276,6 +277,11 @@ sequenceDiagram
 ```
 
 Full diagram and reasoning: [guide/04-payments.md](guide/04-payments.md).
+
+**Cash on delivery** skips the provider entirely: `POST /api/checkout/cod` locks the variant rows, takes the stock and
+creates the order as `processing` + `payment_status=unpaid` in one transaction. An admin marks the cash collected once
+the order is out for delivery or delivered. `orders.payment_method` / `payment_status` keep "where the money is"
+separate from `status` ("where the parcel is"). Details: [guide/04-payments.md](guide/04-payments.md#cash-on-delivery-cod).
 
 ## Inside the Next.js frontend
 

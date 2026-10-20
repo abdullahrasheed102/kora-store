@@ -8,6 +8,7 @@ PATCH /api/admin/variants/<id>                   adjust stock (+/-), price overr
 GET   /api/admin/orders                          list with status filter and search
 GET   /api/admin/orders/<number>                 full detail + allowed next statuses
 POST  /api/admin/orders/<number>/status          move along the state machine (writes an event)
+POST  /api/admin/orders/<number>/cash-collected  cash on delivery: the courier handed over the cash
 GET   /api/admin/returns                         list with status filter
 POST  /api/admin/returns/<id>/status             approve / reject / received / refunded
 GET   /api/admin/tickets · PATCH /<id>           support tickets
@@ -135,6 +136,12 @@ def get_order(order_number: str) -> ResponseReturnValue:
 @bp.post("/admin/orders/<order_number>/status")
 def change_order_status(order_number: str) -> ResponseReturnValue:
     order = admin.change_order_status(db.session, order_number, parse_json(OrderStatusUpdate), admin.utc_now())
+    return admin.order_admin_detail(order)
+
+
+@bp.post("/admin/orders/<order_number>/cash-collected")
+def mark_cash_collected(order_number: str) -> ResponseReturnValue:
+    order = admin.mark_cash_collected(db.session, order_number)
     return admin.order_admin_detail(order)
 
 

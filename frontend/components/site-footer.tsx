@@ -61,11 +61,9 @@ export function SiteFooter() {
 
       <div className="border-t border-paper/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs sm:flex-row sm:justify-between sm:px-6 lg:px-8">
+          <p>© {SITE_NAME}</p>
           <p>
-            {SITE_NAME} is a fictional store. No real payments are taken.
-          </p>
-          <p>
-            Designed and built by{" "}
+            Built by{" "}
             <a href={AUTHOR.url} className="underline underline-offset-2 hover:text-paper">
               {AUTHOR.name}
             </a>

@@ -25,6 +25,8 @@ from app.models import (
     Order,
     OrderEvent,
     OrderStatus,
+    PaymentMethod,
+    PaymentStatus,
     Policy,
     Product,
     ProductVariant,
@@ -304,6 +306,8 @@ def list_orders(session: Session, *, status: OrderStatus | None, q: str | None, 
                 "customer_name": o.customer_name,
                 "email": o.email,
                 "status": o.status.value,
+                "payment_method": o.payment_method.value,
+                "payment_status": o.payment_status.value,
                 "total_cents": o.total_cents,
                 "item_count": sum(i.quantity for i in o.items),
                 "created_at": o.created_at.isoformat(),
@@ -332,6 +336,8 @@ def order_admin_detail(order: Order) -> dict[str, Any]:
     return {
         **order_detail(order),
         "user_id": order.user_id,
+        "phone": order.phone,
+        "can_mark_cash_collected": can_mark_cash_collected(order),
         "payment_id": order.stripe_payment_intent,
         "payment_session_id": order.stripe_session_id,
         "allowed_next_statuses": sorted(s.value for s in ORDER_TRANSITIONS[order.status]),
@@ -369,8 +375,9 @@ def change_order_status(session: Session, order_number: str, body: OrderStatusUp
 
     refund_after_commit = False
     if target is OrderStatus.CANCELLED and order.status is OrderStatus.PROCESSING:
-        # Paid and stock already taken: put the stock back, then refund the payment.
+        # Stock was already taken (card: when paid; cash on delivery: when placed). Put it back.
         _restock(session, [(item.variant_id, item.quantity) for item in order.items])
+        # Card: refund the payment. COD: the courier never collected anything, so nothing to refund.
         refund_after_commit = bool(order.stripe_payment_intent)
 
     previous = order.status
@@ -380,7 +387,38 @@ def change_order_status(session: Session, order_number: str, body: OrderStatusUp
     session.commit()
 
     if refund_after_commit:  # never hold row locks during a network call (same rule as webhooks)
-        _refund(session, order, None, f"refund-cancel-{order.id}")
+        if _refund(session, order, None, f"refund-cancel-{order.id}"):
+            order.payment_status = PaymentStatus.REFUNDED
+            session.commit()
+    return _load_order(session, order_number)
+
+
+# Cash is handed to the courier at the door, so it can only be collected once the parcel is there.
+CASH_COLLECTABLE_STATUSES = {OrderStatus.OUT_FOR_DELIVERY, OrderStatus.DELIVERED}
+
+
+def can_mark_cash_collected(order: Order) -> bool:
+    return (
+        order.payment_method is PaymentMethod.COD
+        and order.payment_status is PaymentStatus.UNPAID
+        and order.status in CASH_COLLECTABLE_STATUSES
+    )
+
+
+def mark_cash_collected(session: Session, order_number: str) -> Order:
+    """The courier handed over the cash for a cash-on-delivery order."""
+    order = _load_order(session, order_number, lock=True)  # two clicks can't both record it
+    if order.payment_method is not PaymentMethod.COD:
+        raise APIError("not_cash_on_delivery", "Only cash-on-delivery orders are paid in cash.", 409)
+    if order.payment_status is not PaymentStatus.UNPAID:
+        raise APIError("already_paid", "The cash for this order has already been recorded.", 409)
+    if order.status not in CASH_COLLECTABLE_STATUSES:
+        raise APIError(
+            "not_delivered_yet", "Cash is collected on delivery: mark the order out for delivery or delivered first.", 409
+        )
+    order.payment_status = PaymentStatus.PAID
+    _event(order, f"Cash collected on delivery: {order.total_cents / 100:.2f} USD.")
+    session.commit()
     return _load_order(session, order_number)
 
 
@@ -463,6 +501,11 @@ def change_return_status(session: Session, return_id: int, body: ReturnStatusUpd
         raise APIError("invalid_transition", f"A {request.type.value} can't go from {request.status.value} to {target.value}.", 409)
     if target is ReturnStatus.REJECTED and not body.note:
         raise APIError("note_required", "Tell the customer why the return was rejected.", 400)
+    # Every check happens BEFORE anything changes: raising halfway would leave a half-made
+    # change in the session for the next commit to save.
+    is_cod = order.payment_method is PaymentMethod.COD
+    if target is ReturnStatus.REFUNDED and is_cod and order.payment_status is not PaymentStatus.PAID:
+        raise APIError("cash_not_collected", "Mark the cash as collected before refunding this order.", 409)
 
     items = {item.id: item for item in order.items}
     names = ", ".join(f"{line['quantity']} × {items[line['order_item_id']].product_name}" for line in request.items)
@@ -474,16 +517,21 @@ def change_return_status(session: Session, return_id: int, body: ReturnStatusUpd
         _event(order, body.note or f"Return received at the warehouse: {names}.")
     elif target is ReturnStatus.REFUNDED:
         amount = refund_estimate_cents(request)
+        # Card: back to the card automatically. COD: there's no card, so staff pay it by bank
+        # transfer or store credit (refunds policy) and this event is the record of it.
+        how = "by bank transfer or store credit" if is_cod else "to the original payment method"
         if _all_items_refunded(order, extra=request):
             previous = order.status
             order.status = OrderStatus.RETURNED
-            order.status_note = "Returned; refund issued to original payment method."
-            _event(order, body.note or f"Refunded {amount / 100:.2f} USD for {names}. Order fully returned "
+            order.payment_status = PaymentStatus.REFUNDED
+            order.status_note = f"Returned; refund issued {how}."
+            _event(order, body.note or f"Refunded {amount / 100:.2f} USD {how} for {names}. Order fully returned "
                    f"(was {previous.value}).", OrderStatus.RETURNED)
         else:
-            _event(order, body.note or f"Refunded {amount / 100:.2f} USD for {names}.")
+            _event(order, body.note or f"Refunded {amount / 100:.2f} USD {how} for {names}.")
         session.commit()
-        _refund(session, order, amount, f"refund-return-{request.id}")
+        if not is_cod:
+            _refund(session, order, amount, f"refund-return-{request.id}")
         return request
     else:
         verb = {ReturnStatus.APPROVED: "approved", ReturnStatus.LABEL_SENT: "label sent", ReturnStatus.REJECTED: "rejected"}

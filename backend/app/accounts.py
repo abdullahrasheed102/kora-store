@@ -158,6 +158,8 @@ def order_summary(order: Order) -> dict[str, Any]:
     return {
         "order_number": order.order_number,
         "status": order.status.value,
+        "payment_method": order.payment_method.value,
+        "payment_status": order.payment_status.value,
         "total_cents": order.total_cents,
         "item_count": sum(item.quantity for item in order.items),
         "created_at": order.created_at.isoformat(),

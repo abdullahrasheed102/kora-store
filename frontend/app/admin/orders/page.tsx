@@ -5,7 +5,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/account/status-badge";
 import { AdminPageHeader, Empty, inputClass, Pager, secondaryButtonClass, tableClass, tdClass, theadClass, thClass } from "@/components/admin/ui";
 import { adminApi } from "@/lib/api-server";
-import { formatDate, formatPrice, statusLabel } from "@/lib/format";
+import { formatDate, formatPrice, PAYMENT_METHOD_LABELS, PAYMENT_STATUS_LABELS, statusLabel } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -48,6 +48,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                 <th scope="col" className={thClass}>Order</th>
                 <th scope="col" className={thClass}>Customer</th>
                 <th scope="col" className={thClass}>Status</th>
+                <th scope="col" className={`${thClass} hidden lg:table-cell`}>Payment</th>
                 <th scope="col" className={`${thClass} hidden md:table-cell`}>Placed</th>
                 <th scope="col" className={`${thClass} text-right`}>Total</th>
               </tr>
@@ -65,6 +66,10 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
                     <span className="block text-xs text-muted">{order.email}</span>
                   </td>
                   <td className={tdClass}><StatusBadge status={order.status} /></td>
+                  <td className={`${tdClass} hidden lg:table-cell`}>
+                    {PAYMENT_METHOD_LABELS[order.payment_method]}
+                    <span className="block text-xs text-muted">{PAYMENT_STATUS_LABELS[order.payment_status]}</span>
+                  </td>
                   <td className={`${tdClass} hidden text-muted md:table-cell`}>{formatDate(order.created_at)}</td>
                   <td className={`${tdClass} text-right tabular-nums`}>{formatPrice(order.total_cents)}</td>
                 </tr>

@@ -151,9 +151,15 @@ export type OrderStatus =
   | "cancelled"
   | "returned";
 
+// How an order is paid, and whether the money has arrived (separate from where the parcel is).
+export type PaymentMethod = "card" | "cod";
+export type PaymentStatus = "unpaid" | "paid" | "refunded";
+
 export type OrderSummary = {
   order_number: string;
   status: OrderStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
   total_cents: number;
   item_count: number;
   created_at: string;
@@ -193,6 +199,7 @@ export type CheckoutRequest = {
   shipping_method: ShippingMethod;
   items: { variant_id: number; quantity: number }[];
   save_address: boolean;
+  phone?: string; // required for cash on delivery
 };
 
 // --- Sandbox payment provider ------------------------------------------------------------------
@@ -217,6 +224,9 @@ export type SandboxCard = { card_number: string; expiry: string; cvc: string; na
 export type TrackingResult = {
   order_number: string;
   status: OrderStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
+  total_cents: number | null; // only for cash on delivery: the amount to have ready
   status_note: string | null;
   created_at: string;
   carrier: string | null;
@@ -355,6 +365,8 @@ export type AdminOrderRow = {
   customer_name: string;
   email: string;
   status: OrderStatus;
+  payment_method: PaymentMethod;
+  payment_status: PaymentStatus;
   total_cents: number;
   item_count: number;
   created_at: string;
@@ -362,6 +374,8 @@ export type AdminOrderRow = {
 
 export type AdminOrder = Omit<OrderDetail, "events"> & {
   user_id: number | null;
+  phone: string | null;
+  can_mark_cash_collected: boolean;
   payment_id: string | null;
   payment_session_id: string | null;
   allowed_next_statuses: OrderStatus[];

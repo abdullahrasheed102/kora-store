@@ -27,6 +27,7 @@ from app.models import (
     OrderEvent,
     OrderItem,
     OrderStatus,
+    PaymentMethod,
     ProductVariant,
     ReturnCreatedBy,
     ReturnRequest,
@@ -93,11 +94,15 @@ def find_order(session: Session, order_number: str, email: str | None, user: Use
 
 
 def tracking_view(order: Order) -> dict[str, Any]:
-    """What the public tracking page shows. Deliberately no street address or payment details:
-    knowing an order number and email is not strong proof of identity."""
+    """What the public tracking page shows. Deliberately no street address, phone or payment
+    details beyond HOW it's paid: knowing an order number and email is not strong proof of
+    identity. (The method helps a cash-on-delivery customer have the cash ready.)"""
     return {
         "order_number": order.order_number,
         "status": order.status.value,
+        "payment_method": order.payment_method.value,
+        "payment_status": order.payment_status.value,
+        "total_cents": order.total_cents if order.payment_method is PaymentMethod.COD else None,
         "status_note": order.status_note,
         "created_at": order.created_at.isoformat(),
         "carrier": order.carrier,

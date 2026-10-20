@@ -68,3 +68,14 @@ export const RETURN_REASONS: { value: string; label: string }[] = [
   { value: "wrong_item", label: "Received the wrong item" },
   { value: "other", label: "Other" },
 ];
+
+export const PAYMENT_METHOD_LABELS = { card: "Card", cod: "Cash on delivery" } as const;
+export const PAYMENT_STATUS_LABELS = { unpaid: "Not paid yet", paid: "Paid", refunded: "Refunded" } as const;
+
+/** One line for customers: "Card · Paid", or "Cash on delivery · $30.95 due on delivery". */
+export function paymentSummary(order: { payment_method: "card" | "cod"; payment_status: "unpaid" | "paid" | "refunded"; total_cents: number | null }): string {
+  if (order.payment_method === "cod" && order.payment_status === "unpaid") {
+    return order.total_cents === null ? "Cash on delivery" : `Cash on delivery · ${formatPrice(order.total_cents)} due on delivery`;
+  }
+  return `${PAYMENT_METHOD_LABELS[order.payment_method]} · ${PAYMENT_STATUS_LABELS[order.payment_status]}`;
+}

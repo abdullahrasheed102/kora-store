@@ -1,18 +1,21 @@
 """Checkout and payment providers.
 
 POST /api/checkout/session                    pending order + hosted payment page; returns its URL
+POST /api/checkout/cod                        cash on delivery: confirmed order, stock taken now
 POST /api/stripe/webhook                      Stripe events   (when PAYMENT_PROVIDER=stripe)
 POST /api/sandbox/webhook                     sandbox events  (when PAYMENT_PROVIDER=sandbox)
 GET  /api/sandbox/sessions/<session_id>       the sandbox payment page's data
 POST /api/sandbox/sessions/<session_id>/pay   pay with a sandbox test card
 """
 
+import re
+
 from flask import Blueprint, current_app, request
 from flask.typing import ResponseReturnValue
 from flask_jwt_extended import get_current_user, jwt_required
 
 from app import checkout, payments, sandbox
-from app.checkout import CheckoutBody
+from app.checkout import CheckoutBody, CodCheckoutBody
 from app.errors import APIError
 from app.extensions import db, limiter
 from app.sandbox import SandboxPayBody
@@ -27,6 +30,25 @@ bp = Blueprint("checkout", __name__)
 def create_session() -> ResponseReturnValue:
     body = parse_json(CheckoutBody)
     return checkout.create_checkout(db.session, body, get_current_user()), 201
+
+
+def _cod_phone_key() -> str:
+    """Rate-limit key: the phone number's digits. Someone faking orders from many IPs usually
+    reuses a few numbers, so this catches what the per-IP limit misses."""
+    data = request.get_json(silent=True)
+    phone = data.get("phone") if isinstance(data, dict) else None
+    return "cod-phone:" + re.sub(r"\D", "", phone if isinstance(phone, str) else "")[:20]
+
+
+@bp.post("/checkout/cod")
+# Stricter than card checkout: a COD order takes stock immediately without any payment, so fake
+# orders could block real shoppers from buying. These limits make that slow and noisy.
+@limiter.limit("3 per hour; 10 per day")  # per IP
+@limiter.limit("3 per day", key_func=_cod_phone_key)  # per phone number
+@jwt_required(optional=True)
+def create_cod_order() -> ResponseReturnValue:
+    body = parse_json(CodCheckoutBody)
+    return checkout.create_cod_order(db.session, body, get_current_user()), 201
 
 
 @bp.post("/stripe/webhook")

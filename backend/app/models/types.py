@@ -39,6 +39,17 @@ class OrderStatus(StrEnum):
     RETURNED = "returned"
 
 
+class PaymentMethod(StrEnum):
+    CARD = "card"  # hosted payment page (sandbox or Stripe); paid before we ship
+    COD = "cod"  # cash on delivery: the courier collects cash when the parcel arrives
+
+
+class PaymentStatus(StrEnum):
+    UNPAID = "unpaid"
+    PAID = "paid"
+    REFUNDED = "refunded"  # the whole order amount was given back
+
+
 class ShippingMethod(StrEnum):
     STANDARD = "standard"
     EXPRESS = "express"

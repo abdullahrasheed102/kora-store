@@ -4,6 +4,7 @@
 set -euo pipefail  # stop at the first failing step, so a broken migration never goes live
 
 flask db upgrade      # apply new migrations (Alembic remembers which ones already ran)
+flask policies sync   # new policy text from seed/policies.json (only higher versions; keeps admin edits)
 flask images sync     # attach product photos listed in seed/image-manifest.json (idempotent)
 
 # `exec` replaces this shell with gunicorn, so Render's stop signal reaches gunicorn directly

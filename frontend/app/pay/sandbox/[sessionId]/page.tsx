@@ -23,7 +23,7 @@ export default function SandboxPayPage({ params }: PageProps<"/pay/sandbox/[sess
       >
         <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider text-white">Sandbox</span>
         <span className="font-medium">Sandbox payment, no real money.</span>
-        <span className="text-muted">Nothing is charged. Use a test card below.</span>
+        <span className="text-muted">Nothing is charged, and only the test cards below work. Never enter a real card.</span>
       </div>
       <div className="mt-8">
         <Suspense fallback={<TextSkeleton lines={10} />}>

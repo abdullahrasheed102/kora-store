@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import { AUTHOR } from "@/lib/site";
 import { ABOUT_PHOTO } from "@/lib/site-images";
 
 export const metadata: Metadata = {
@@ -50,12 +49,10 @@ export default function AboutPage() {
       </ul>
 
       <div className="mt-16 rounded-sm bg-sage p-8 sm:p-10">
-        <h2 className="font-serif text-2xl">A note about this store</h2>
+        <h2 className="font-serif text-2xl">Find your everyday pieces</h2>
         <p className="mt-3 max-w-2xl leading-relaxed text-ink/80">
-          Kora Outfitters is a fictional brand, built by{" "}
-          <a href={AUTHOR.url} className="underline underline-offset-2">{AUTHOR.name}</a> as a portfolio project: a
-          complete store with real checkout, order tracking, returns and an admin dashboard, and the home of an AI
-          customer support assistant. No real orders are shipped and no real payments are taken.
+          Organic cotton tees, linen shirts, merino knits and coats made for many winters, cut to fit well and made
+          to be worn for years.
         </p>
         <Link href="/shop" className="mt-6 inline-block rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper hover:bg-accent">
           Browse the collection

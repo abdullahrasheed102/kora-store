@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.checkout import CURRENCY, SHIPPING_NAMES, success_url
 from app.errors import APIError
-from app.models import Order, OrderStatus
+from app.models import Order, OrderStatus, PaymentMethod
 from app.payments import SandboxProvider, get_provider
 
 SUCCESS_CARD = "4242424242424242"
@@ -43,7 +43,10 @@ def require_sandbox() -> SandboxProvider:
 
 def _find_order(session: Session, session_id: str) -> Order:
     order = session.scalars(
-        select(Order).where(Order.stripe_session_id == session_id).options(selectinload(Order.items))
+        select(Order)
+        # COD orders keep their confirmation token in the same column: never a sandbox payment page.
+        .where(Order.stripe_session_id == session_id, Order.payment_method == PaymentMethod.CARD)
+        .options(selectinload(Order.items))
     ).one_or_none()
     if order is None or not session_id.startswith("cs_sandbox_"):
         raise APIError("session_not_found", "This payment link is not valid.", 404)

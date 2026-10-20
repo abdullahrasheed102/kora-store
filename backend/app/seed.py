@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.extensions import db
 from app.images import MANIFEST_PATH, format_report, load_manifest, sync_images
+from app.policies import policy_from_seed
 from app.models import (
     ORDER_NUMBER_START,
     EventActor,
@@ -26,6 +27,7 @@ from app.models import (
     OrderEvent,
     OrderItem,
     OrderStatus,
+    PaymentStatus,
     Policy,
     Product,
     ProductVariant,
@@ -160,7 +162,7 @@ def seed_database(
     admin_password: str | None = None,
 ) -> SeedCounts:
     """Load policies, products, orders (with timelines) and the admin user, in one transaction."""
-    policies = [Policy(**row) for row in _load_json(seed_dir / "policies.json")]
+    policies = [policy_from_seed(row) for row in _load_json(seed_dir / "policies.json")]
     session.add_all(policies)
 
     products = [_build_product(row) for row in _load_json(seed_dir / "products.json")]
@@ -245,6 +247,8 @@ def _build_order(
         shipping_cents=shipping,
         total_cents=subtotal + shipping,
         shipping_method=method,
+        # Seed orders are card orders; their payment status follows what happened to them.
+        payment_status=_seed_payment_status(status, timeline),
         shipping_line1=address["line1"],
         shipping_line2=address.get("line2"),
         shipping_city=address["city"],
@@ -263,6 +267,16 @@ def _build_order(
             for entry in timeline
         ],
     )
+
+
+def _seed_payment_status(status: OrderStatus, timeline: list[TimelineEntry]) -> PaymentStatus:
+    """Same rules as the payment-status migration: never paid -> unpaid; paid then undone -> refunded."""
+    was_paid = any(entry.status is OrderStatus.PROCESSING for entry in timeline)
+    if status is OrderStatus.PENDING_PAYMENT or (status is OrderStatus.CANCELLED and not was_paid):
+        return PaymentStatus.UNPAID
+    if status in (OrderStatus.CANCELLED, OrderStatus.RETURNED):
+        return PaymentStatus.REFUNDED
+    return PaymentStatus.PAID
 
 
 def _build_order_item(

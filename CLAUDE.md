@@ -73,6 +73,7 @@ Abdullah's first language is Urdu, so prefer plain words over idioms.
 - Product photos: name originals `{product-slug}-{color-slug}` or `{product-slug}-lifestyle` (e.g. `linen-button-up-shirt-sky-blue.jpeg`). `npm run images` pads colour photos to 4:5 (never crops them), centre-crops lifestyle photos, and rewrites `backend/seed/image-manifest.json` (committed). Then `cd backend && flask images sync` (idempotent; never resets data) fills `product_images`. `flask images check` reports misnamed and missing photos without changing anything. Never rename a photo without asking.
 - Homepage sections are chosen by product **tags** (`new`, `autumn-edit`, `bestseller`), never by product ids; the perks strip reads policy `summary` fields. The AI assistant button is switched by `NEXT_PUBLIC_ASSISTANT_ENABLED`.
 - Animation: calm (200–500ms, `ease-calm`, no bounce), only `opacity`/`transform`, never on the LCP image. Use CSS where it's simple and `Reveal` (Motion, `m` components inside `LazyMotion`) for scroll reveals. Every animation must respect `prefers-reduced-motion` (fade or nothing).
+- Payments: card (sandbox or Stripe; stock taken by the webhook after payment) or cash on delivery (`POST /api/checkout/cod`: stock taken at placement, phone required, US only, strictly rate limited). `orders.payment_status` (unpaid/paid/refunded) is separate from `status`. Changing seed policy text on a live database: edit `backend/seed/policies.json`, raise that policy's `version`, and let `flask policies sync` apply it (never reseed production).
 - Tests: pytest for the backend (models, pricing, checkout webhook, auth, order lookup). Add tests with each phase. Run them before saying a phase is done.
 - Never commit secrets. Stripe keys, database URLs and the agent key come from environment variables.
 
@@ -83,4 +84,4 @@ Order dates are relative (`created_days_ago`, `delivered_days_ago`, `estimated_d
 ## Commands (keep these working)
 - Backend: `cd backend && flask db upgrade && flask seed --reset && flask run` · tests: `pytest` · after adding photos: `flask images sync`
 - Frontend: `cd frontend && npm run dev` · checks: `npm test && npm run lint && npm run build`
-- Production: Render runs `backend/start.sh` (migrations → image sync → gunicorn, settings in `render.yaml` and `backend/gunicorn.conf.py`); Vercel builds `frontend/`. Steps in `DEPLOY.md`. Never run `flask seed --reset` against Neon.
+- Production: Render runs `backend/start.sh` (migrations → policy sync → image sync → gunicorn, settings in `render.yaml` and `backend/gunicorn.conf.py`); Vercel builds `frontend/`. Steps in `DEPLOY.md`. Never run `flask seed --reset` against Neon.

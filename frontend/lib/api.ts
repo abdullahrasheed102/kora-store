@@ -120,6 +120,9 @@ export const api = {
   // Checkout: the server creates a pending order and a Stripe page, and returns its URL.
   createCheckout: (body: CheckoutRequest) =>
     request<{ order_number: string; checkout_url: string }>("/checkout/session", json("POST", body)),
+  // Cash on delivery: no payment page. The order is confirmed at once; checkout_url is our thank-you page.
+  createCodOrder: (body: CheckoutRequest) =>
+    request<{ order_number: string; checkout_url: string }>("/checkout/cod", json("POST", body)),
   // Sandbox provider: our own hosted payment page (used when PAYMENT_PROVIDER=sandbox).
   sandboxSession: (sessionId: string) => request<SandboxSession>(`/sandbox/sessions/${encodeURIComponent(sessionId)}`),
   sandboxPay: (sessionId: string, card: SandboxCard) =>
@@ -148,6 +151,8 @@ export const api = {
       number: string,
       body: { status: string; note?: string; carrier?: string; tracking_number?: string; estimated_delivery?: string },
     ) => request<AdminOrder>(`/admin/orders/${encodeURIComponent(number)}/status`, json("POST", body)),
+    markCashCollected: (number: string) =>
+      request<AdminOrder>(`/admin/orders/${encodeURIComponent(number)}/cash-collected`, json("POST")),
     updateReturnStatus: (id: number, body: { status: string; note?: string }) =>
       request<AdminReturn>(`/admin/returns/${id}/status`, json("POST", body)),
     updateTicket: (id: number, body: { status?: string; priority?: string }) =>

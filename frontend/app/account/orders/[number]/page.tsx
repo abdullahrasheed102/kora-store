@@ -8,7 +8,7 @@ import { TextSkeleton } from "@/components/skeletons";
 import { isNotFound } from "@/lib/api";
 import { accountApi, requireCustomer } from "@/lib/api-server";
 import { OrderTimeline } from "@/components/orders/order-progress";
-import { COUNTRY_NAMES, formatDate, formatPrice, returnStatusLabel, SHIPPING_LABELS } from "@/lib/format";
+import { COUNTRY_NAMES, formatDate, formatPrice, paymentSummary, returnStatusLabel, SHIPPING_LABELS } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order details", robots: { index: false } };
 
@@ -101,6 +101,10 @@ async function Order({ params }: Pick<PageProps<"/account/orders/[number]">, "pa
           <div className="flex justify-between font-medium">
             <dt>Total</dt>
             <dd>{formatPrice(order.total_cents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Payment</dt>
+            <dd className="text-right">{paymentSummary(order)}</dd>
           </div>
         </dl>
       </section>

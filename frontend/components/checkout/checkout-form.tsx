@@ -8,7 +8,7 @@ import { CartTotals } from "@/components/cart/cart-totals";
 import { LinePhoto } from "@/components/cart/line-photo";
 import { api, ApiError } from "@/lib/api";
 import { COUNTRY_NAMES, formatPrice, SHIPPING_LABELS } from "@/lib/format";
-import type { Address, AddressInput, Country, ShippingMethod, User } from "@/lib/types";
+import type { Address, AddressInput, Country, PaymentMethod, ShippingMethod, User } from "@/lib/types";
 
 const inputClass =
   "mt-1.5 h-12 w-full rounded-sm border border-line bg-card px-4 text-base focus:border-ink/50 focus:outline-none focus-visible:outline-2";
@@ -27,13 +27,16 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
   const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0];
   const [addressChoice, setAddressChoice] = useState<string>(defaultAddress ? String(defaultAddress.id) : NEW_ADDRESS);
   const [country, setCountry] = useState<Country>(defaultAddress?.country ?? "US");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const phoneId = useId();
 
   const chooseCountry = (next: Country) => {
     setCountry(next);
-    // Keep the shipping method valid for the country, in the same event (no effect needed).
+    // Keep the shipping and payment methods valid for the country, in the same event (no effect needed).
     if (!methodsFor(next).includes(shippingMethod)) setShippingMethod(methodsFor(next)[0]);
+    if (next !== "US") setPaymentMethod("card"); // cash on delivery is for US addresses only
   };
 
   if (count === 0) {
@@ -69,18 +72,23 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
 
     setSubmitting(true);
     try {
-      const { checkout_url } = await api.createCheckout({
+      const body = {
         email: user ? undefined : field("email"),
         address,
         shipping_method: shippingMethod,
         items: lines.map((line) => ({ variant_id: line.variantId, quantity: line.quantity })),
         save_address: !saved && form.get("save_address") === "on",
-      });
-      // Leave our site for Stripe's hosted payment page. Card details never touch our servers.
+      };
+      // Card: leave for the hosted payment page (card details never touch our servers).
+      // Cash on delivery: the order is placed now, and we go straight to the thank-you page.
+      const { checkout_url } =
+        paymentMethod === "cod" ? await api.createCodOrder({ ...body, phone: field("phone") }) : await api.createCheckout(body);
       window.location.assign(checkout_url);
     } catch (caught) {
       setSubmitting(false);
-      setError(messageFor(caught));
+      const codLimit = paymentMethod === "cod" && caught instanceof ApiError && caught.status === 429;
+      // COD orders are limited per hour (fake orders would hold stock), so "wait a minute" would be wrong.
+      setError(codLimit ? "Too many cash on delivery orders from this connection. Please try later, or pay by card." : messageFor(caught));
     }
   }
 
@@ -226,6 +234,59 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
             ))}
           </div>
         </fieldset>
+
+        <fieldset>
+          <legend className="font-serif text-2xl">Payment</legend>
+          {/* The one place the demo is spelled out: right where a shopper decides to pay. */}
+          <p role="note" className="mt-4 rounded-sm border border-accent/30 bg-accent/5 px-4 py-3 text-sm leading-relaxed text-ink">
+            This is a portfolio demonstration store. No real payments are taken and no orders are shipped.
+          </p>
+          <div className="mt-4 space-y-2">
+            {PAYMENT_OPTIONS.map((option) => {
+              const unavailable = option.method === "cod" && selectedCountry !== "US";
+              return (
+                <label
+                  key={option.method}
+                  className={`flex items-start gap-3 rounded-sm border border-line bg-card p-4 has-[:checked]:border-ink ${unavailable ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                >
+                  <input
+                    type="radio"
+                    name="payment_method"
+                    checked={paymentMethod === option.method}
+                    disabled={unavailable}
+                    onChange={() => setPaymentMethod(option.method)}
+                    className="mt-1 size-4 accent-ink"
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium">{option.label}</span>
+                    <span className="block text-muted">{unavailable ? "Available for US addresses only." : option.detail}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+          {paymentMethod === "cod" && (
+            <div className="mt-4">
+              <label htmlFor={phoneId} className="text-sm font-medium">
+                Phone number
+              </label>
+              <input
+                id={phoneId}
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                required
+                inputMode="tel"
+                maxLength={30}
+                aria-describedby={`${phoneId}-hint`}
+                className={inputClass}
+              />
+              <p id={`${phoneId}-hint`} className="mt-1.5 text-xs text-muted">
+                The courier calls this number before delivery. Have the exact amount ready in cash.
+              </p>
+            </div>
+          )}
+        </fieldset>
       </div>
 
       <aside aria-label="Order summary" className="h-fit space-y-6 rounded-sm bg-card p-6 ring-1 ring-line lg:sticky lg:top-32">
@@ -267,15 +328,30 @@ export function CheckoutForm({ user, addresses, cancelled, declined }: Props) {
           disabled={submitting || isUpdating || issues || !quote}
           className="h-14 w-full rounded-full bg-ink text-sm font-medium text-paper transition hover:bg-accent disabled:cursor-not-allowed disabled:bg-ink/30"
         >
-          {submitting ? "Redirecting to secure payment…" : quote ? `Pay ${formatPrice(quote.total_cents)}` : "Pay"}
+          {buttonLabel(paymentMethod, submitting, quote?.total_cents)}
         </button>
         <p className="text-center text-xs leading-relaxed text-muted">
-          You&apos;ll pay on a secure hosted payment page. This is a demo store: no real money is taken. Use test card
-          4242 4242 4242 4242, any future date and any CVC.
+          {paymentMethod === "cod"
+            ? "You'll pay in cash when your order arrives."
+            : "You'll pay on a secure hosted payment page. Use test card 4242 4242 4242 4242, any future date and any CVC."}
         </p>
       </aside>
     </form>
   );
+}
+
+const PAYMENT_OPTIONS: { method: PaymentMethod; label: string; detail: string }[] = [
+  { method: "card", label: "Card", detail: "Pay securely on the next page." },
+  { method: "cod", label: "Cash on delivery", detail: "Pay the courier in cash when your order arrives." },
+];
+
+function buttonLabel(method: PaymentMethod, submitting: boolean, totalCents: number | undefined): string {
+  if (method === "cod") {
+    if (submitting) return "Placing your order…";
+    return totalCents === undefined ? "Place order" : `Place order · ${formatPrice(totalCents)}`;
+  }
+  if (submitting) return "Redirecting to secure payment…";
+  return totalCents === undefined ? "Pay" : `Pay ${formatPrice(totalCents)}`;
 }
 
 function messageFor(error: unknown): string {

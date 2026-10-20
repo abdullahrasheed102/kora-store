@@ -335,6 +335,117 @@ Tests (`tests/test_sandbox.py`) prove each part: wrong secret → 400, body chan
 header → 400, a 10-minute-old timestamp → 400, and the same signed event twice → `fulfilled` then `duplicate`, with
 stock taken once.
 
+## Cash on delivery (COD)
+
+**Cash on delivery** means the customer pays the courier in cash when the parcel arrives. It's common in
+Pakistan, India, the Middle East and other markets where many shoppers don't use cards online. We added it as a
+second payment method next to "Card".
+
+### What changed in the data
+
+| Column (on `orders`) | Values | Meaning |
+|---|---|---|
+| `payment_method` | `card` · `cod` | How the customer pays |
+| `payment_status` | `unpaid` · `paid` · `refunded` | Whether the money has arrived |
+| `phone` | text, COD only | So the courier can call before arriving. Shown to admins only |
+
+`status` (where the parcel is) and `payment_status` (where the money is) are now **separate**. A COD order can be
+`delivered` and still `unpaid` until the courier hands over the cash. Before COD, "processing" also meant "paid",
+because card orders only reach processing after the webhook. That shortcut no longer holds, so the payment state
+got its own column.
+
+The migration (`2026_10_20_6c80859c1e35_…`) marks existing orders by what actually happened to them: still awaiting
+payment → `unpaid`; cancelled before paying → `unpaid`; returned, or cancelled after paying → `refunded`; everything
+else → `paid`. A test downgrades the test database, inserts one order of each kind, upgrades it, and checks the result.
+
+### The COD flow
+
+```python
+# backend/app/checkout.py
+def create_cod_order(session, body, user):
+    order, _quote = _new_order(session, body, user, method=PaymentMethod.COD)   # same checks + server pricing as card
+    variants = _lock_variants(session, [item.variant_id for item in order.items])   # SELECT … FOR UPDATE, id order
+    if _short_items(order.items, variants):
+        session.rollback()
+        raise APIError("cart_changed", "Some items in your bag just sold out. …", 409)
+    for item in order.items:
+        variants[item.variant_id].stock -= item.quantity
+    order.status = OrderStatus.PROCESSING          # confirmed now: no payment to wait for
+    order.stripe_session_id = f"cod_{secrets.token_urlsafe(24)}"   # secret for the thank-you page
+    session.commit()                               # order + stock + event: all or nothing
+```
+
+- **No payment provider is involved.** `POST /api/checkout/cod` creates the order as `processing` + `unpaid` and
+  returns our own thank-you URL.
+- **Stock is taken immediately**, with the same row locks the card webhook uses (`_lock_variants` and `_short_items`
+  are now shared by both paths).
+- **A phone number is required** (7–15 digits), and COD is offered for **US addresses only**: couriers abroad don't
+  collect cash for us.
+- **The thank-you page** needs a secret only the buyer has, because order numbers are guessable. Card orders use the
+  provider's session id. COD orders get a random `cod_…` token in the same column. The sandbox payment page refuses
+  COD orders, so that token can never be "paid" by card.
+
+### Why stock is reserved at once for COD, but only after payment for card
+
+| | Card | Cash on delivery |
+|---|---|---|
+| When is the order confirmed? | When the webhook says "paid" | Immediately |
+| When is stock taken? | In the webhook, after payment | When the order is placed |
+| Why | Most started checkouts are never paid. Reserving stock for them would hide items from real buyers for up to 30 minutes per abandoned checkout | There's no later "paid" moment before shipping. We commit to ship now, so we must hold the items now, or we could sell the last one twice |
+| Rare bad case | Sold out while paying → automatic refund | None at checkout: if stock ran out, the order is refused before it's saved |
+
+### The fraud risk of COD, and what we do about it
+
+COD has a known weakness: **placing an order costs nothing**. Someone can place fake orders that hold stock (so real
+customers see "sold out"), waste courier trips, and never pay. Card orders don't have this problem, because nothing is
+reserved until money arrives. Our defences:
+
+1. **Rate limits** on `POST /api/checkout/cod`: **3 per hour and 10 per day per IP**, plus **3 per day per phone
+   number**. Someone using many IP addresses usually reuses a few phone numbers, so the second limit catches what the
+   first misses. Refused requests count too, so trying random inputs isn't free.
+2. **A required phone number** that staff and the courier can call to confirm before shipping.
+3. **US addresses only.**
+4. **Admins can cancel**, and cancelling a COD order puts the stock straight back on sale.
+
+What a real shop would add: phone verification by SMS code, a maximum COD order value, blocking addresses or numbers
+with many refused deliveries, and a confirmation call before shipping. We don't have these.
+
+### After the order: cash, cancellation, refunds
+
+- **Mark cash collected** (admin order page → button, or `POST /api/admin/orders/<number>/cash-collected`). It's
+  allowed only for COD orders that are unpaid and **out for delivery or delivered**, because the cash is handed over at
+  the door. It sets `payment_status = paid` and writes an order event ("Cash collected on delivery: 30.95 USD"),
+  created by `admin`. The order row is locked, so two clicks can't record it twice.
+- **Cancel a COD order** (from processing): the stock is restored, as for card. There is no refund, because nothing
+  was paid. `payment_status` stays `unpaid`.
+- **Refund a COD return**: there's no card to send money back to. Staff refund **by bank transfer or store credit**
+  (the refunds policy says so), and the order event records it. The API refuses to mark a COD return refunded before
+  the cash was collected.
+- **Card**: cancelling or fully refunding now also sets `payment_status = refunded`.
+
+### Policies: changing the text on a live database
+
+The shipping and refunds policies needed new text about COD, but production can't be reseeded: that would delete real
+orders. So `backend/seed/policies.json` gives each policy a **`version`**, and the database remembers which version
+each policy came from (`policies.seed_version`).
+
+```bash
+flask policies sync   # updates a policy only when the file's version is HIGHER than the stored one
+```
+
+It's like migrations, but for content. It's **idempotent** (a second run prints `0 updated`), it never deletes
+anything, and an admin's edit in Admin → Policies survives every deploy until someone deliberately ships a higher
+version. It runs in `backend/start.sh` right after `flask db upgrade`. It has to come after the migrations, because it
+needs the `seed_version` column that a migration adds.
+
+### Bug found while testing: validate first, then change
+
+The first version of "refund a return" set the return's status to `refunded` and **then** checked whether the COD cash
+had been collected. If not, it raised an error. In production that half-made change would be thrown away with the
+request's database session. In the test, all requests shared one session, so the **next** request saved it. The fix:
+every check runs before anything changes. That's a good habit everywhere: a function that may fail should fail before
+it touches any state.
+
 ## Request flow: the whole payment
 
 ```mermaid

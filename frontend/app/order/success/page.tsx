@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { ClearCart, WaitForPayment } from "@/components/checkout/payment-status";
 import { TextSkeleton } from "@/components/skeletons";
 import { api, isNotFound } from "@/lib/api";
-import { COUNTRY_NAMES, formatDate, formatPrice, SHIPPING_LABELS } from "@/lib/format";
+import { COUNTRY_NAMES, formatDate, formatPrice, paymentSummary, SHIPPING_LABELS } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Thank you", robots: { index: false } };
 
@@ -40,28 +40,35 @@ async function Confirmation({ searchParams }: Pick<PageProps<"/order/success">, 
     );
   }
 
-  const paid = order.status !== "pending_payment";
+  // Card orders are confirmed once the payment webhook arrives; cash-on-delivery orders at once.
+  const confirmed = order.status !== "pending_payment";
+  const isCod = order.payment_method === "cod";
   const address = order.shipping_address;
 
   return (
     <div>
-      {paid && <ClearCart />}
+      {confirmed && <ClearCart />}
       <div className="text-center">
-        <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">{paid ? "Order confirmed" : "Almost there"}</p>
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-accent">{confirmed ? "Order confirmed" : "Almost there"}</p>
         <h1 className="mt-4 font-serif text-4xl tracking-tight sm:text-5xl">
-          {paid ? `Thank you, ${order.customer_name.split(" ")[0]}.` : "Payment received"}
+          {confirmed ? `Thank you, ${order.customer_name.split(" ")[0]}.` : "Payment received"}
         </h1>
         <p className="mt-4 text-muted">
           Order <span className="font-medium text-ink">{order.order_number}</span> · placed {formatDate(order.created_at)}
         </p>
         <div className="mt-4">
-          {paid ? (
+          {confirmed ? (
             <p className="text-sm text-muted">
-              A receipt is on its way to {order.email}. We&apos;ll ship within 1–2 business days.
+              {isCod
+                ? `Please have ${formatPrice(order.total_cents)} in cash ready when it arrives. We'll ship within 1–2 business days.`
+                : "We'll ship within 1–2 business days."}
             </p>
           ) : (
             <WaitForPayment />
           )}
+          <p className="mt-3 text-xs text-muted">
+            This is a portfolio demonstration store: no payment was taken and nothing will be shipped.
+          </p>
         </div>
       </div>
 
@@ -92,8 +99,12 @@ async function Confirmation({ searchParams }: Pick<PageProps<"/order/success">, 
             <dd>{order.shipping_cents === 0 ? "Free" : formatPrice(order.shipping_cents)}</dd>
           </div>
           <div className="flex justify-between text-base font-medium">
-            <dt>Total paid</dt>
+            <dt>{isCod && order.payment_status === "unpaid" ? "Total due on delivery" : "Total paid"}</dt>
             <dd>{formatPrice(order.total_cents)}</dd>
+          </div>
+          <div className="flex justify-between pt-1.5">
+            <dt className="text-muted">Payment</dt>
+            <dd>{paymentSummary({ ...order, total_cents: null })}</dd>
           </div>
         </dl>
         <div className="mt-6 border-t border-line pt-4 text-sm">

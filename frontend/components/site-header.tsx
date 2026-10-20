@@ -6,19 +6,11 @@ import { AccountLink, AccountLinkFallback } from "@/components/account-link";
 import { CartButton } from "@/components/cart/cart-button";
 import { SearchIcon } from "@/components/icons";
 import { MobileNav } from "@/components/mobile-nav";
-import { AUTHOR, NAV_CATEGORIES } from "@/lib/site";
+import { NAV_CATEGORIES } from "@/lib/site";
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur supports-[backdrop-filter]:bg-paper/75">
-      <div className="bg-ink px-4 py-2 text-center text-xs text-paper/85">
-        A demo store built by{" "}
-        <a href={AUTHOR.url} className="font-medium text-paper underline underline-offset-2 hover:text-sage">
-          {AUTHOR.name}
-        </a>{" "}
-        · No real orders are shipped
-      </div>
-
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
         <MobileNav />
 

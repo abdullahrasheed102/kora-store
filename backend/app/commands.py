@@ -1,4 +1,4 @@
-"""Maintenance commands: `flask orders expire-unpaid`, `flask images sync` and `flask images check`."""
+"""Maintenance commands: `flask orders expire-unpaid`, `flask images sync|check` and `flask policies sync`."""
 
 from datetime import timedelta
 from pathlib import Path
@@ -9,6 +9,7 @@ from flask.cli import AppGroup
 from app.checkout import expire_unpaid_orders
 from app.extensions import db
 from app.images import MANIFEST_PATH, format_report, load_manifest, sync_images
+from app.policies import POLICIES_PATH, load_policy_seed, sync_policies
 
 orders_cli = AppGroup("orders", help="Order maintenance.")
 
@@ -55,3 +56,23 @@ def images_check(manifest: Path) -> None:
     """Report which photos match, which file names look wrong, and which are missing. Changes nothing."""
     report = sync_images(db.session, load_manifest(manifest), dry_run=True)
     click.echo(format_report(report, dry_run=True, show_coverage=True))
+
+
+policies_cli = AppGroup("policies", help="Store policy text.")
+
+
+@policies_cli.command("sync")
+@click.option(
+    "--file",
+    "path",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=POLICIES_PATH,
+    show_default="backend/seed/policies.json",
+)
+def policies_sync(path: Path) -> None:
+    """Update policy text from the seed file, for policies whose `version` went up.
+
+    Safe on a live database: it never deletes or reseeds anything, and running it again
+    changes nothing. Admin edits are kept until a higher version is shipped.
+    """
+    click.echo(str(sync_policies(db.session, load_policy_seed(path))))

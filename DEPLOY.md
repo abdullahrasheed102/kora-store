@@ -92,6 +92,7 @@ shows no missing photos.
 4. **Apply**. Open the service → **Logs** and watch. You should see, in order:
    - `pip install …` (the build)
    - `INFO [alembic.runtime.migration] …` (migrations: nothing to do, step 2 already ran them)
+   - `Policies: 0 added, 0 updated, 5 unchanged.` (only changes when a policy's `version` goes up)
    - `Synced product images: 0 added, 0 updated, 65 unchanged, 0 removed.`
    - `Listening at: http://0.0.0.0:10000` and then **"Your service is live"**.
 5. Test it:
@@ -207,6 +208,7 @@ while it starts. Before sending the link to someone, open the site once. Or:
 | Code | `git push`. Vercel and Render both redeploy `main` automatically |
 | Database schema | Add the migration and push. `start.sh` runs `flask db upgrade` on Render's next start |
 | Product photos | `cd frontend && npm run images`, commit the `.webp` files **and** `backend/seed/image-manifest.json`, push. `start.sh` runs `flask images sync` |
+| Policy text | Edit it in Admin → Policies (live at once), **or** change `backend/seed/policies.json` and raise that policy's `version`, then push. `start.sh` runs `flask policies sync`, which only applies higher versions |
 | A Render environment variable | Render → Environment → Save, rebuild, and deploy |
 | `BACKEND_URL` / `NEXT_PUBLIC_*` on Vercel | Change it, then **Redeploy** (they're baked in at build time) |
 
